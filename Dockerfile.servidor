@@ -1,0 +1,9 @@
+# Imagen rápida para el servidor de pruebas: reutiliza la imagen de ine-ocr-api (mismas dependencias
+# y modelos de PaddleOCR ya descargados). Para producción usar el Dockerfile normal.
+FROM ine-ocr-api:latest
+USER root
+WORKDIR /app
+COPY app ./app
+COPY scripts ./scripts
+RUN chown -R 1000:1000 /app
+USER 1000
