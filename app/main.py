@@ -8,12 +8,31 @@ from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import pipeline
+from . import homologado, pipeline, respuesta
 from .config import get_settings
 from .documents import PDF_MAGIC
 from .ocr import engine
-from .respuesta import ESTADOS, MENSAJES, construir, http_status, sobre
+from .respuesta import http_status
 from .vlm import VlmClient
+
+
+def _homologado() -> bool:
+    return get_settings().formato_respuesta == "homologado"
+
+
+def sobre(codigo: int, mensaje: str | None = None, **extra) -> dict:
+    """Sobre de la respuesta en el formato configurado (propio u homologado)."""
+    if _homologado():
+        return homologado.sobre(codigo, mensaje, **extra)
+    return respuesta.sobre(codigo, mensaje, **extra)
+
+
+def _mensaje(codigo: int) -> str:
+    return (homologado.MENSAJES if _homologado() else respuesta.MENSAJES).get(codigo, "")
+
+
+def _estados() -> dict[int, str]:
+    return homologado.ESTADOS if _homologado() else respuesta.ESTADOS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("passport-api")
@@ -50,13 +69,13 @@ _api_key = APIKeyHeader(name="X-API-Key", auto_error=False,
 
 
 def _error_doc(*codigos: int) -> dict:
-    return {c: {"description": ESTADOS[c], "content": {"application/json": {"example": sobre(c)}}} for c in codigos}
+    return {c: {"description": _estados().get(c, ""), "content": {"application/json": {"example": sobre(c)}}} for c in codigos}
 
 
 def check_api_key(x_api_key: str | None = Security(_api_key)) -> None:
     expected = get_settings().api_key
     if expected and x_api_key != expected:
-        raise HTTPException(status_code=401, detail=MENSAJES[401])
+        raise HTTPException(status_code=401, detail=_mensaje(401))
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -68,7 +87,9 @@ async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResp
 @app.exception_handler(RequestValidationError)
 async def _invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
     errores = [f"{'.'.join(str(x) for x in e.get('loc', []) if x != 'body')}: {e.get('msg')}" for e in exc.errors()]
-    return JSONResponse(sobre(422, f"{MENSAJES[422]} {'; '.join(errores)}"), status_code=422)
+    if _homologado():
+        return JSONResponse(sobre(422, errores=errores), status_code=422)
+    return JSONResponse(sobre(422, f"{_mensaje(422)} {'; '.join(errores)}"), status_code=422)
 
 
 @app.exception_handler(Exception)
@@ -101,12 +122,12 @@ async def _read(f: UploadFile) -> bytes | JSONResponse:
     limit = s.max_upload_mb * 1024 * 1024
     data = await f.read(limit + 1)
     if len(data) > limit:
-        return JSONResponse(sobre(413, f"{MENSAJES[413]} Máximo {s.max_upload_mb} MB."), status_code=413)
+        return JSONResponse(sobre(413, f"{_mensaje(413)} Máximo {s.max_upload_mb} MB."), status_code=413)
     tipo = _tipo(data)
     if tipo is None:
         return JSONResponse(sobre(222), status_code=200)
     if s.solo_pdf and tipo != "pdf":
-        return JSONResponse(sobre(400, "Sólo se aceptan archivos PDF."), status_code=400)
+        return JSONResponse(sobre(400, None if _homologado() else "Sólo se aceptan archivos PDF."), status_code=400)
     return data
 
 
@@ -122,7 +143,7 @@ async def extraer_pasaporte(
         return data
     async with app.state.sem:
         result = await pipeline.process([data], app.state.vlm, file.filename, include_crops=incluir_recortes)
-    body = construir(result)
+    body = homologado.construir(result) if _homologado() else respuesta.construir(result)
     log.info("%s -> %s (%s) en %s ms", file.filename, body["codigo"], body["estado"],
              result.meta.tiempo_total_ms if result.meta else "?")
     return JSONResponse(body, status_code=http_status(body["codigo"]))

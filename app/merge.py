@@ -37,6 +37,9 @@ class Merger:
     conf: dict[str, str] = field(default_factory=dict)
     checks: list[Validacion] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # Lectura impresa (VLM) por campo, antes de que la MRZ la corrija; la usa el formato homologado
+    impreso: dict[str, str] = field(default_factory=dict)
+    correcciones: list[dict[str, str]] = field(default_factory=list)
 
     # ------------------------------------------------------------ helpers
     def _check(self, regla: str, ok: bool | None, detalle: str | None = None) -> None:
@@ -100,6 +103,8 @@ class Merger:
         # --- número de pasaporte (dígito verificador en la MRZ)
         mrz_num = m.numero if m else None
         vlm_num = v.norm_code(_s(vlm, "numero_pasaporte")) or None
+        if vlm_num:
+            self.impreso["numero_pasaporte"] = vlm_num
         if self._mrz_ok("mrz_numero") and mrz_num:
             d.numero_pasaporte = mrz_num
             if vlm_num and vlm_num != mrz_num and self._mrz_fuerte("mrz_numero"):
@@ -129,6 +134,8 @@ class Merger:
         for campo in ("apellidos", "nombres"):
             mrz_val = _clean_name(getattr(m, campo)) if m else None
             vlm_val = _clean_name(_s(vlm, campo).upper()) or None
+            if vlm_val:
+                self.impreso[campo] = vlm_val
             if vlm_val and mrz_val:
                 sim = v.similarity(vlm_val, mrz_val)
                 tv, tm = set(v.norm_text(vlm_val).split()), set(v.norm_text(mrz_val).split())
@@ -161,6 +168,10 @@ class Merger:
                                      ("fecha_vencimiento", "fecha_vencimiento", "mrz_vencimiento")):
             mrz_date = getattr(m, mrz_attr) if m else None
             vlm_date = v.parse_date(_s(vlm, campo))
+            if vlm_date:
+                # Día y mes invertidos respecto a una MRZ válida: es la misma fecha leída en otro orden
+                imp = mrz_date if (mrz_date and self._mrz_ok(chk) and _swapped(vlm_date, mrz_date)) else vlm_date
+                self.impreso[campo] = _iso(imp)
             if self._mrz_ok(chk) and mrz_date:
                 setattr(d, campo, _iso(mrz_date))
                 if vlm_date and vlm_date != mrz_date and _swapped(vlm_date, mrz_date):
@@ -193,6 +204,9 @@ class Merger:
         # --- sexo
         mrz_sex = m.sexo if m else None
         vlm_sex = _SEX.get(_s(vlm, "sexo").upper().strip(". ")) if _s(vlm, "sexo") else None
+        sexo_impreso = _s(vlm, "sexo_impreso").upper().strip(" .,:-")
+        if sexo_impreso:
+            self.impreso["sexo"] = sexo_impreso
         if mrz_sex and vlm_sex:
             d.sexo = mrz_sex if m.integra else vlm_sex
             self._check("sexo_mrz_vs_impreso", mrz_sex == vlm_sex, None if mrz_sex == vlm_sex else f"MRZ {mrz_sex} / impreso {vlm_sex}")
@@ -213,6 +227,8 @@ class Merger:
         # --- sólo lectura visual
         d.lugar_nacimiento = _s(vlm, "lugar_nacimiento").upper() or None
         d.autoridad = _s(vlm, "autoridad").upper() or None
+        if d.nacionalidad_impresa:
+            self.impreso["nacionalidad"] = d.nacionalidad_impresa
         exp = v.parse_date(_s(vlm, "fecha_expedicion"))
         d.fecha_expedicion = _iso(exp)
         if exp and d.fecha_vencimiento:
@@ -228,10 +244,13 @@ class Merger:
 
         # --- CURP (pasaportes mexicanos)
         curp = v.normalize_curp(_s(vlm, "curp"))
+        if curp:
+            self.impreso["curp"] = curp
         ocr_curp = _curp_en_ocr(self.ocr_texts)
         if ocr_curp and (not curp or (not v.curp_valid(curp) and v.curp_valid(ocr_curp))):
             if curp and curp != ocr_curp:
                 self.warnings.append(f"CURP tomada del OCR ({ocr_curp}); la lectura visual decía {curp}")
+                self.correcciones.append({"campo": "curp", "leido": curp, "quedo": ocr_curp, "fuente": "ocr"})
             curp = ocr_curp
         if not curp and m and m.pais_emisor == "MEX" and m.opcional and len(m.opcional) >= 14:
             pass  # el campo opcional de la MRZ mexicana no trae la CURP completa; sólo referencia
@@ -241,6 +260,7 @@ class Merger:
                                          d.sexo) if not v.curp_valid(curp) else None
                 if reparada and reparada != curp:
                     self.warnings.append(f"CURP corregida con la MRZ y el dígito verificador ({curp} -> {reparada})")
+                    self.correcciones.append({"campo": "curp", "leido": curp, "quedo": reparada, "fuente": "mrz"})
                     curp = reparada
                 d.curp = curp
                 valid = v.curp_valid(curp)

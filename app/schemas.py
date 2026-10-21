@@ -79,3 +79,10 @@ class ResultadoPasaporte(BaseModel):
     error_codigo: int | None = None
     meta: Meta | None = None
     recortes: dict[str, str] | None = Field(None, description="PNG en base64 (sólo si se pide)")
+    # --- Internos (alimentan el formato homologado; el formato propio no los muestra) ---
+    lectura_impresa: dict[str, str] = Field(default_factory=dict,
+                                            description="Lo que el VLM leyó en la hoja de datos, ya normalizado")
+    correcciones: list[dict[str, str]] = Field(default_factory=list,
+                                               description="Datos que se corrigieron: campo, leido, quedo, fuente")
+    sello_lectura: dict | None = Field(None, description="Lectura cruda del sello de cotejo (si se buscó)")
+    pasaportes_detectados: int = 1

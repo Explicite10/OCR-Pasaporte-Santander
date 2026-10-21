@@ -47,6 +47,23 @@ class Settings(BaseSettings):
     # Rechazar lo que no parece un pasaporte (estado "rechazado" con el motivo en "error")
     rechazar_no_pasaporte: bool = True
 
+    # --- Formato de la respuesta de POST /pasaporte ---
+    # "propio": el formato original de este servicio (pasaporte, mrz, validacion con objetos, avisos...).
+    # "homologado": el contrato de la API de referencia (santander_ia), ver docs/HOMOLOGACION_PASAPORTE.md.
+    #   El motor es el mismo; sólo cambia la forma de la respuesta.
+    formato_respuesta: Literal["propio", "homologado"] = "propio"
+    # Sólo en modo homologado: si la lectura impresa y la MRZ difieren y el dígito verificador respalda
+    # a la MRZ, ¿qué va en `datos`?
+    #   False (default, regla de la referencia): la lectura impresa, y la diferencia es discrepancia (210).
+    #   True: el valor de la MRZ, con un aviso de corrección (211). Es lo que hace el modo propio.
+    mrz_manda: bool = False
+    # Leer el sello de cotejo de Santander (FECHA, REVISÓ, clave). None = sólo en modo homologado.
+    leer_sello: bool | None = None
+
+    @property
+    def sello_activo(self) -> bool:
+        return self.formato_respuesta == "homologado" if self.leer_sello is None else self.leer_sello
+
     # --- API ---
     max_concurrent_jobs: int = 2
     api_key: str | None = None

@@ -54,8 +54,7 @@ Transcribe EXACTAMENTE lo impreso en cada campo, carácter por carácter, en MAY
 - nombres: todos los nombres de pila.
 - nacionalidad: tal cual está impresa (p. ej. "MEXICANA", "COLOMBIANA", "UNITED STATES OF AMERICA").
 - fecha_nacimiento, fecha_expedicion, fecha_vencimiento: en formato AAAA-MM-DD (el pasaporte puede traerlas como "12 ENE/JAN 1985", "12/01/1985", "1985.01.12"...).
-- sexo: M o F (en pasaportes mexicanos puede estar impreso como H / M: H = M, M = F; si dice "F" o "FEMENINO" es F).
-- lugar_nacimiento: tal cual (ciudad, estado, país; p. ej. "JALISCO, MEX").
+- sexo: M o F (en pasaportes mexicanos puede estar impreso como H / M: H = M, M = F; si dice "F" o "FEMENINO" es F).- lugar_nacimiento: tal cual (ciudad, estado, país; p. ej. "JALISCO, MEX").
 - autoridad: la autoridad expedidora (p. ej. "SRE", "PASSPORT AGENCY").
 - curp: sólo pasaportes mexicanos, 18 caracteres; en otros países deja "".
 - mrz_linea1, mrz_linea2: los 2 renglones tipo máquina de la parte inferior (44 caracteres cada uno, empiezan con "P<"). Transcríbelos EXACTAMENTE incluyendo cada "<". Si no se ven, deja "".
@@ -76,6 +75,37 @@ MRZ_PROMPT = """La imagen es la página de datos de un pasaporte fotocopiada en 
 En la parte inferior hay 2 renglones de texto tipo máquina (MRZ) de 44 caracteres cada uno; el primero empieza con "P<".
 Transcribe los 2 renglones EXACTAMENTE, carácter por carácter, incluyendo cada símbolo "<". No agregues espacios.
 Si un carácter no se distingue, escribe tu mejor lectura; no omitas caracteres."""
+
+# Llamada aparte (sólo en modo homologado) para no alterar la lectura principal: agregar un campo al
+# prompt principal cambia lo que el modelo lee en otros campos.
+SEXO_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {"sexo_impreso": {"type": "string"}},
+    "required": ["sexo_impreso"],
+}
+
+SEXO_PROMPT = """La imagen es la página de datos de un pasaporte. Transcribe el campo "Sexo / Sex" EXACTAMENTE como está impreso, sin traducir ni interpretar (p. ej. "H", "M", "F", "M/M", "FEMENINO"). Si no se lee, deja ""."""
+
+SELLO_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "presente": {"type": "boolean"},
+        "fecha": {"type": "string"},
+        "reviso": {"type": "string"},
+        "clave_revisor": {"type": "string"},
+    },
+    "required": ["presente", "fecha", "reviso", "clave_revisor"],
+}
+
+SELLO_PROMPT = """La imagen es un recorte de una página escaneada. Debe contener el sello del banco Santander con el texto "COTEJADO CONTRA ORIGINAL", con un espacio FECHA y un espacio REVISÓ. Cerca del sello (dentro, a un lado o debajo) puede venir el nombre del empleado que revisó y su clave: una letra seguida de dígitos (p. ej. "S318204", "B-29595").
+
+Devuelve:
+- presente: true si ves el sello "COTEJADO CONTRA ORIGINAL"; false si no está.
+- fecha: la fecha del espacio FECHA tal como está escrita o estampada (p. ej. "27/09/2026", "24 ABR 2026").
+- reviso: el NOMBRE de quien revisó, tal como se lee (impreso o escrito). Una firma ilegible no es un nombre: en ese caso deja "".
+- clave_revisor: la clave del empleado tal como se lee.
+
+No inventes: si un dato no está o no se lee, deja ""."""
 
 LOCATE_SCHEMA: dict[str, Any] = {
     "type": "object",

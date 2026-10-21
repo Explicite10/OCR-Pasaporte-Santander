@@ -8,14 +8,15 @@ import time
 import cv2
 import numpy as np
 
-from . import mrz_td3
+from . import mrz_td3, sello
 from .config import get_settings
 from .documents import DocumentError, encode_png, load_pages
-from .layout import Box, CardBox, Layout, analyze, analyze_boxes, ocr_text_chars
+from .layout import Box, CardBox, Layout, analyze, analyze_boxes, count_passports, ocr_text_chars
 from .merge import CRITICAL_FIELDS, Merger, needs_review
 from .ocr import engine
 from .schemas import Meta, ResultadoPasaporte
-from .vlm import MRZ_PROMPT, MRZ_SCHEMA, VIZ_PROMPT, VIZ_SCHEMA, VlmClient, VlmError
+from .vlm import (MRZ_PROMPT, MRZ_SCHEMA, SELLO_PROMPT, SELLO_SCHEMA, SEXO_PROMPT, SEXO_SCHEMA, VIZ_PROMPT,
+                  VIZ_SCHEMA, VlmClient, VlmError)
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +46,42 @@ def _mrz_strip(img: np.ndarray) -> np.ndarray:
         scale = 1800 / w
         strip = cv2.resize(strip, (int(w * scale), int(strip.shape[0] * scale)), interpolation=cv2.INTER_CUBIC)
     return strip
+
+
+async def _leer_sello(layout: Layout, vlm: VlmClient, ocr_read, times: dict[str, int]) -> dict | None:
+    """Busca el texto del sello en el OCR (y, si no está, pasa el OCR por las páginas que se habían
+    saltado) y le pide al VLM lo escrito en el recorte. None = no se encontró ningún sello."""
+    t = time.perf_counter()
+    found = None
+    for i, lines in enumerate(layout.page_lines):
+        a = sello.find_anchor(lines)
+        if a is not None:
+            found = (i, a)
+            break
+    if found is None:
+        for i, lines in enumerate(layout.page_lines):
+            if lines or i >= len(layout.page_images):
+                continue
+            lines = await asyncio.to_thread(ocr_read, layout.page_images[i])
+            layout.page_lines[i] = lines
+            a = sello.find_anchor(lines)
+            if a is not None:
+                found = (i, a)
+                break
+    if found is None:
+        times["sello"] = _ms(time.perf_counter() - t)
+        return None
+    i, anchor = found
+    img = sello.crop(layout.page_images[i], anchor)
+    try:
+        data, _ = await vlm.extract(img, SELLO_PROMPT, SELLO_SCHEMA, max_side=1600)
+    except VlmError as e:
+        log.error("VLM (sello) falló: %s", e)
+        data = None
+    times["sello"] = _ms(time.perf_counter() - t)
+    if data is not None:
+        data["pagina"] = i + 1
+    return data
 
 
 async def process(files: list[bytes], vlm: VlmClient | None, filename: str | None = None,
@@ -130,9 +167,26 @@ async def process(files: list[bytes], vlm: VlmClient | None, filename: str | Non
         if other is not None and other.integra and chosen.integra and other.numero != chosen.numero:
             warnings.append("OCR y VLM leyeron MRZ íntegras pero distintas")
 
+    # 3c. Modo homologado: el sexo tal como está impreso (llamada aparte; no toca la lectura principal)
+    if vlm_viz is not None and s.formato_respuesta == "homologado":
+        t = time.perf_counter()
+        try:
+            data, _ = await vlm.extract(passport.image, SEXO_PROMPT, SEXO_SCHEMA)
+            vlm_viz = {**vlm_viz, "sexo_impreso": data.get("sexo_impreso") or ""}
+        except VlmError as e:
+            log.error("VLM (sexo impreso) falló: %s", e)
+        times["vlm_sexo"] = _ms(time.perf_counter() - t)
+
+    # 3d. Sello de cotejo (sólo si se pide: modo homologado o LEER_SELLO=true)
+    sello_lectura = None
+    if vlm_on and s.sello_activo:
+        sello_lectura = await _leer_sello(layout, vlm, ocr_read, times)
+
     # 4. Fusión y validación
     merger = Merger(vlm_viz, chosen, [l.text for l in passport.lines] if passport else [])
     datos = merger.run()
+    if datos.mrz is not None:
+        datos.mrz.origen = mrz_source
     warnings += merger.warnings
     review = needs_review(merger.conf)
     critical_bad = [f for f in review if f in CRITICAL_FIELDS]
@@ -160,7 +214,10 @@ async def process(files: list[bytes], vlm: VlmClient | None, filename: str | Non
         return ResultadoPasaporte(archivo=filename, estado="rechazado", error=motivo, advertencias=warnings, meta=meta)
 
     result = ResultadoPasaporte(archivo=filename, estado=estado, datos=datos, confianza=merger.conf,
-                                campos_a_revisar=review, validaciones=merger.checks, advertencias=warnings, meta=meta)
+                                campos_a_revisar=review, validaciones=merger.checks, advertencias=warnings, meta=meta,
+                                lectura_impresa=merger.impreso, correcciones=merger.correcciones,
+                                sello_lectura=sello_lectura,
+                                pasaportes_detectados=max(1, count_passports(layout.page_lines)))
     if include_crops and passport is not None:
         result.recortes = {"pasaporte": base64.b64encode(encode_png(passport.image, 1400)).decode()}
     return result

@@ -72,7 +72,23 @@ docker compose run --rm lote lote/pdfs --salida lote/resultados --concurrencia 2
 En una GPU de 8 GB sólo cabe un modelo de 8B cargado: por eso en el servidor de pruebas la API
 de pasaportes comparte el Ollama del proyecto de INE (mismo `qwen3-vl:8b-instruct`).
 
-## Respuesta de `POST /pasaporte`
+## Formato homologado (respaldo de la API de referencia)
+
+Con `FORMATO_RESPUESTA=homologado`, `POST /pasaporte` responde con el contrato de la API de referencia
+(`santander_ia`), definido en [docs/HOMOLOGACION_PASAPORTE.md](docs/HOMOLOGACION_PASAPORTE.md): mismas
+llaves (`datos`, `sello`, `mrz`, `validacion`, `avisos`, `clasificacion`), mismos códigos (225 = no es
+pasaporte) y mismas etiquetas de validación. Así se puede usar como respaldo cambiando sólo el dominio.
+
+- El motor no cambia: [app/homologado.py](app/homologado.py) sólo traduce el resultado interno.
+- En modo homologado se agregan dos lecturas cortas del VLM: el sexo tal como está impreso (~1.3 s)
+  y el sello de cotejo, que se ubica con el OCR (~2 s). La lectura principal no se toca.
+- `MRZ_MANDA=false` (default) sigue la regla de la referencia; `true` conserva la regla de este servicio.
+- Verificación: `python -m scripts.validar_respuestas <carpeta>` corre el validador del contrato;
+  `python -m scripts.procesar_lote ... --homologado` guarda las respuestas en `respuestas/`, y
+  `python -m scripts.rehacer_respuestas <lote>` las vuelve a armar sin repetir OCR ni VLM.
+- Resultados y dudas abiertas: [docs/HOMOLOGACION_REPORTE.md](docs/HOMOLOGACION_REPORTE.md).
+
+## Respuesta de `POST /pasaporte` (formato propio)
 
 Mismo sobre que la API de INE: `codigo` / `estado` / `mensaje` + `pasaporte`, `mrz`, `validacion`,
 `avisos`, `confianza`, `meta`.

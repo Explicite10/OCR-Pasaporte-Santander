@@ -83,9 +83,17 @@ async def run(args: argparse.Namespace) -> None:
     (out / "json").mkdir(parents=True, exist_ok=True)
     if args.recortes:
         (out / "recortes").mkdir(exist_ok=True)
+    if args.homologado:
+        os.environ["FORMATO_RESPUESTA"] = "homologado"
+        get_settings.cache_clear()
+        s = get_settings()
+        (out / "respuestas").mkdir(exist_ok=True)
 
     if not args.solo_resumen:
         files = sorted(p for p in Path(args.carpeta).iterdir() if p.suffix.lower() in EXTS)
+        if args.archivos:
+            wanted = set(args.archivos.split(","))
+            files = [f for f in files if f.name in wanted]
         if args.limite:
             files = files[:args.limite]
         pending = [f for f in files if args.forzar or not (out / "json" / f"{f.stem}.json").exists()]
@@ -103,6 +111,12 @@ async def run(args: argparse.Namespace) -> None:
                 try:
                     r = await pipeline.process([f.read_bytes()], vlm, f.name, include_crops=args.recortes)
                     data = r.model_dump(mode="json")
+                    if args.homologado:
+                        from app import homologado
+                        resp = homologado.construir(r)
+                        resp.pop("recortes", None)
+                        (out / "respuestas" / f"{f.stem}.json").write_text(
+                            json.dumps(resp, ensure_ascii=False, indent=2), encoding="utf-8")
                 except Exception as e:  # noqa: BLE001
                     data = {"archivo": f.name, "estado": "error", "error": f"{type(e).__name__}: {e}"}
                 if args.recortes and data.get("recortes"):
@@ -187,6 +201,10 @@ def main() -> None:
     ap.add_argument("--solo-resumen", action="store_true")
     ap.add_argument("--modelo", help="Nombre del modelo VLM (sobrescribe VLM_MODEL)")
     ap.add_argument("--formato", choices=["schema", "plantilla"], help="Sobrescribe VLM_FORMATO")
+    ap.add_argument("--homologado", action="store_true",
+                    help="Además guarda en respuestas/ la respuesta de POST /pasaporte en formato homologado "
+                         "(y lee el sello)")
+    ap.add_argument("--archivos", help="Lista de nombres de archivo (separados por coma) a procesar")
     args = ap.parse_args()
     if not args.solo_resumen and not args.carpeta:
         ap.error("falta la carpeta de PDFs")

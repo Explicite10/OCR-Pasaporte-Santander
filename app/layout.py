@@ -270,3 +270,19 @@ def analyze_boxes(layout: Layout, cards: list[CardBox], ocr_read) -> Layout:
 
 def ocr_text_chars(page_lines: list[list[Line]]) -> int:
     return sum(len(re.sub(r"[^A-Z0-9]", "", l.text.upper())) for lines in page_lines for l in lines)
+
+
+def count_passports(page_lines: list[list[Line]]) -> int:
+    """Cuántas identidades distintas (renglón 1 de MRZ TD3) aparecen en el texto OCR del PDF.
+    Una misma página fotocopiada dos veces cuenta una vez (se agrupan por similitud)."""
+    from difflib import SequenceMatcher
+
+    vistos: list[str] = []
+    for lines in page_lines:
+        for row in _merge_rows(lines):
+            if not mrz_td3.looks_like_line1(row.text):
+                continue
+            key = mrz_td3.clean(row.text)[:30]
+            if not any(SequenceMatcher(None, key, k).ratio() >= 0.7 for k in vistos):
+                vistos.append(key)
+    return len(vistos)
