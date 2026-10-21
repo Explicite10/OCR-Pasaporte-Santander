@@ -69,6 +69,10 @@ cp .env.example .env
 docker compose run --rm lote lote/pdfs --salida lote/resultados --concurrencia 2
 ```
 
+**API key**: con `API_KEY` definida en `.env` (así está en el servidor), `POST /pasaporte` exige el header
+`X-API-Key`; sin él o con otro valor responde `401 NO_AUTORIZADO`. `/health` no la pide. En `/docs`, el
+botón Authorize la captura una vez para todas las llamadas.
+
 En una GPU de 8 GB sólo cabe un modelo de 8B cargado: por eso en el servidor de pruebas la API
 de pasaportes comparte el Ollama del proyecto de INE (mismo `qwen3-vl:8b-instruct`).
 
