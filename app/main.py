@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, HTTPException, Query, Request, Security, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, Security, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
@@ -135,14 +135,13 @@ async def _read(f: UploadFile) -> bytes | JSONResponse:
           summary="Extrae los datos de la página de datos de un pasaporte (PDF)")
 async def extraer_pasaporte(
     file: UploadFile = File(..., description="PDF escaneado que contiene el pasaporte (puede traer otros documentos)"),
-    incluir_recortes: bool = Query(False, description="Devolver el recorte del pasaporte en base64"),
     _: None = Security(check_api_key),
 ):
     data = await _read(file)
     if isinstance(data, JSONResponse):
         return data
     async with app.state.sem:
-        result = await pipeline.process([data], app.state.vlm, file.filename, include_crops=incluir_recortes)
+        result = await pipeline.process([data], app.state.vlm, file.filename)
     body = homologado.construir(result) if _homologado() else respuesta.construir(result)
     log.info("%s -> %s (%s) en %s ms", file.filename, body["codigo"], body["estado"],
              result.meta.tiempo_total_ms if result.meta else "?")
