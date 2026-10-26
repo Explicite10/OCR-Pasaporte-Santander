@@ -77,4 +77,4 @@ MRZ (9). Son los candidatos a revisión humana, que es justo lo que el código 2
 2. **Tarjeta de residente del INM** como segundo tipo de documento (MRZ TD1 `I<MEX`, 49 % de los PDFs la
    traen y 4 % sólo traen esa): mismo pipeline con el parser TD1 del proyecto de INE.
 3. **Velocidad**: PaddleOCR en GPU o 200 dpi para bajar los ~9 s de OCR por documento.
-4. Base de datos / historial y endpoint de revisión humana, copiados de `OCR-INE-Santander`.
+4. Base de datos / historial y endpoint de revisión humana, copiados de `OCR-INE-OpenSource`.

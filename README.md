@@ -5,7 +5,7 @@ API en FastAPI que extrae los datos de la **página de datos de pasaportes de cu
 PDF) y devuelve un JSON estructurado con **confianza por campo** y **validaciones**.
 
 Todo corre local y gratis: **PaddleOCR** + **Qwen3-VL 8B** (Ollama). Misma arquitectura que
-`OCR-INE-Santander`, cambiando el ancla: aquí manda la **MRZ TD3** (ICAO 9303), que es igual en
+`OCR-INE-OpenSource`, cambiando el ancla: aquí manda la **MRZ TD3** (ICAO 9303), que es igual en
 todos los países y trae dígitos verificadores.
 
 ## Cómo funciona
