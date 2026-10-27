@@ -10,3 +10,6 @@ resultados/
 verdad*.csv
 *.pdf
 lote/
+
+# La guía de integración sí se versiona: sólo lleva datos ficticios
+!docs/Documentacion_API_OCR_Pasaporte.pdf
