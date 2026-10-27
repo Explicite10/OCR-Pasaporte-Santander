@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     # Leer el sello de cotejo de Santander (FECHA, REVISÓ, clave). None = sólo en modo homologado.
     leer_sello: bool | None = None
 
+    # Plan de atención: "anio" = vigente si el año de vencimiento es igual o mayor al actual (lo que pide
+    # el plan); "fecha" = la fecha de vencimiento es hoy o posterior. datos.vigente usa la misma regla.
+    regla_vigencia: Literal["anio", "fecha"] = "anio"
+
     @property
     def sello_activo(self) -> bool:
         return self.formato_respuesta == "homologado" if self.leer_sello is None else self.leer_sello

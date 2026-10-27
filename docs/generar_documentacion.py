@@ -22,8 +22,8 @@ EJ = json.loads((PROYECTO / "docs" / "ejemplos_respuesta.json").read_text(encodi
 PROMPT = (PROYECTO / "docs" / "PROMPT_IA.md").read_text(encoding="utf-8").split("```text", 1)[1].rsplit("```", 1)[0].strip("\n")
 
 URL = "http://172.10.30.17:18474"
-VERSION_API = "0.2.0"
-VERSION_DOC = "1.0"
+VERSION_API = "0.3.0"
+VERSION_DOC = "1.1"
 FECHA_DOC = "27 de octubre de 2026"
 FECHA_CORTA = "27/10/2026"
 W, Hh = letter
@@ -237,7 +237,10 @@ st += tabla(["Paso", "Qué ocurre"], [
                            "y su clave."),
     ("6. Comprobaciones", "Cruza la hoja de datos contra la MRZ y la CURP (fecha, sexo, número personal) y marca "
                           "coincidencias, discrepancias y lo que no se pudo verificar."),
-    ("7. Respuesta", "Entrega el JSON con un código que indica la calidad de la extracción."),
+    ("7. Plan de atención", "Si se envían los datos capturados en la solicitud, responde las 8 validaciones del "
+                            "plan de atención (sección Pasaporte) con SÍ/NO y los motivos de rechazo."),
+    ("8. Respuesta", "Entrega el JSON con un código que indica la calidad de la extracción y el bloque "
+                     "validacion_plan con el resultado del plan de atención."),
 ], [3.2, 14])
 st.append(H2("1.2 Documentos soportados"))
 st += LI(["<b>Pasaportes de cualquier país</b> con zona MRZ de 2 líneas (formato ICAO TD3). Probado con más de 40 "
@@ -255,10 +258,17 @@ st += LI(["Solicita la <b>API key</b> al responsable del servicio. Guárdala en 
           "secretos, nunca en el código.",
           f"Envía el PDF por <b>POST multipart/form-data</b> en el campo {m('file')} a {m('/pasaporte')} "
           f"con el header {m('X-API-Key')}.",
-          f"Lee {m('codigo')} para decidir (sección 6) y toma los datos de {m('datos')}."])
+          "Para validar contra la solicitud, agrega en el mismo formulario nombre, curp, fecha_nacimiento y "
+          "nacionalidad capturados (sección 4.1).",
+          f"Lee {m('validacion_plan.cumple')} para saber si el documento pasa el plan de atención, y {m('codigo')} "
+          "para la calidad de la extracción (secciones 5.6 y 6)."])
 st += code(f'''curl -X POST "{URL}/pasaporte" \\
   -H "X-API-Key: $OCR_PASAPORTE_API_KEY" \\
-  -F "file=@expediente.pdf;type=application/pdf"''', "Ejemplo (curl)")
+  -F "file=@expediente.pdf;type=application/pdf" \\
+  -F "nombre=Ana Lucia Torres Vega" \\
+  -F "curp=TOVA920708MDFRGN02" \\
+  -F "fecha_nacimiento=1992-07-08" \\
+  -F "nacionalidad=Mexicana"''', "Ejemplo (curl)")
 
 # ------------------------------------------------------------------ 3
 st.append(H1("3. Conexión"))
@@ -297,24 +307,45 @@ st += tabla(["Elemento", "Valor"], [
     ("Tipo del archivo", f"PDF. Se recomienda indicar {m('application/pdf')} en la parte del archivo; la API "
                          "reconoce el PDF por su contenido, no por el nombre ni por el tipo declarado."),
 ], [4.0, 13.2])
-st.append(H2("4.1 Ejemplos por lenguaje"))
+st.append(H2("4.1 Datos de la solicitud (opcionales)"))
+st.append(P("Campos de texto en el mismo formulario. Con ellos la API responde las validaciones de coincidencia del "
+            "plan de atención. Sin ellos la extracción funciona igual, pero esas validaciones quedan como "
+            "NO_VERIFICADO y el plan no se cumple."))
+st += tabla(["Campo", "Formato", "Uso"], [
+    ("nombre", "Texto", "Nombre completo capturado, en cualquier orden (nombres y apellidos)."),
+    ("apellido_paterno, apellido_materno, nombres", "Texto", "Alternativa a nombre, si la solicitud los captura por separado."),
+    ("curp", "18 caracteres", "Solo si la solicitud tiene CURP. Si no se envía, o el pasaporte es extranjero y no trae CURP, "
+                              "la validación queda NO_APLICA y no bloquea."),
+    ("fecha_nacimiento", "AAAA-MM-DD", "También acepta DD/MM/AAAA."),
+    ("nacionalidad", "Texto", "Gentilicio (Colombiana), país (Colombia) o código ISO de 2 o 3 letras (CO, COL)."),
+], [5.2, 2.6, 9.4], mono_cols=(0,))
+st.append(H2("4.2 Ejemplos por lenguaje"))
 st += code(f'''import os
 import requests
 
 URL = "{URL}/pasaporte"
 API_KEY = os.environ["OCR_PASAPORTE_API_KEY"]
 
-def extraer_pasaporte(ruta_pdf: str) -> dict:
+def extraer_pasaporte(ruta_pdf: str, solicitud: dict | None = None) -> dict:
     with open(ruta_pdf, "rb") as f:
         resp = requests.post(
             URL,
             headers={{"X-API-Key": API_KEY}},
             files={{"file": (os.path.basename(ruta_pdf), f, "application/pdf")}},
+            data=solicitud or {{}},   # nombre, curp, fecha_nacimiento, nacionalidad
             timeout=120,
         )
     return resp.json()          # siempre trae codigo, estado y mensaje
 
-r = extraer_pasaporte("expediente.pdf")
+r = extraer_pasaporte("expediente.pdf", {{
+    "nombre": "Ana Lucia Torres Vega", "curp": "TOVA920708MDFRGN02",
+    "fecha_nacimiento": "1992-07-08", "nacionalidad": "Mexicana",
+}})
+plan = r.get("validacion_plan")
+if plan:
+    print("Cumple el plan:", plan["cumple"], "-", plan["mensaje"])
+    for motivo in plan["motivos_rechazo"]:
+        print("  -", motivo)
 if r["codigo"] in (200, 210, 211, 212):
     d = r["datos"]
     print(d.get("numero_pasaporte"), d.get("nombre_completo"))   # usar .get(): las llaves pueden faltar''',
@@ -323,10 +354,12 @@ st += code(f'''import {{ readFile }} from "node:fs/promises";
 
 const URL = "{URL}/pasaporte";
 
-export async function extraerPasaporte(rutaPdf) {{
+export async function extraerPasaporte(rutaPdf, solicitud = {{}}) {{
   const buffer = await readFile(rutaPdf);
   const form = new FormData();
   form.append("file", new Blob([buffer], {{ type: "application/pdf" }}), "expediente.pdf");
+  // solicitud: {{ nombre, curp, fecha_nacimiento, nacionalidad }} (opcionales)
+  for (const [k, v] of Object.entries(solicitud)) if (v) form.append(k, v);
 
   const resp = await fetch(URL, {{
     method: "POST",
@@ -334,7 +367,7 @@ export async function extraerPasaporte(rutaPdf) {{
     body: form,
     signal: AbortSignal.timeout(120_000),
   }});
-  return await resp.json();   // {{ codigo, estado, mensaje, datos?, sello?, mrz?, ... }}
+  return await resp.json();   // {{ codigo, estado, mensaje, datos?, validacion_plan?, ... }}
 }}''', "JavaScript / Node.js 18+ (fetch nativo)")
 st += code(f'''using System.Net.Http.Headers;
 using System.Text.Json;
@@ -346,10 +379,15 @@ using var form = new MultipartFormDataContent();
 var archivo = new ByteArrayContent(await File.ReadAllBytesAsync("expediente.pdf"));
 archivo.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
 form.Add(archivo, "file", "expediente.pdf");
+form.Add(new StringContent("Ana Lucia Torres Vega"), "nombre");   // datos de la solicitud (opcionales)
+form.Add(new StringContent("1992-07-08"), "fecha_nacimiento");
+form.Add(new StringContent("Mexicana"), "nacionalidad");
 
 var resp = await http.PostAsync("{URL}/pasaporte", form);
 using var json = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
 int codigo = json.RootElement.GetProperty("codigo").GetInt32();
+if (json.RootElement.TryGetProperty("validacion_plan", out var plan))
+    Console.WriteLine($"Cumple: {{plan.GetProperty("cumple").GetBoolean()}}");
 if (codigo is 200 or 210 or 211 or 212)
 {{
     var datos = json.RootElement.GetProperty("datos");
@@ -360,13 +398,19 @@ $ch = curl_init("{URL}/pasaporte");
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_HTTPHEADER     => ["X-API-Key: " . getenv("OCR_PASAPORTE_API_KEY")],
-    CURLOPT_POSTFIELDS     => ["file" => new CURLFile("expediente.pdf", "application/pdf", "expediente.pdf")],
+    CURLOPT_POSTFIELDS     => [
+        "file"             => new CURLFile("expediente.pdf", "application/pdf", "expediente.pdf"),
+        "nombre"           => "Ana Lucia Torres Vega",   // datos de la solicitud (opcionales)
+        "fecha_nacimiento" => "1992-07-08",
+        "nacionalidad"     => "Mexicana",
+    ],
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 120,
 ]);
 $body = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
+$cumple = $body["validacion_plan"]["cumple"] ?? false;
 if (in_array($body["codigo"], [200, 210, 211, 212])) {{
     $numero = $body["datos"]["numero_pasaporte"] ?? null;   // la llave puede no venir
 }}''', "PHP (cURL)")
@@ -387,10 +431,12 @@ st += code('''{
   "avisos": [ ... ],             // puntos a revisar por una persona (solo códigos 200-212)
   "clasificacion": { ... },      // qué documento se detectó         (códigos 200-212, 221 y 225)
   "confianza": { ... },          // nivel de confianza por campo     (solo códigos 200-212)
-  "meta": { ... }                // tiempos, páginas, motor          (solo códigos 200-212)
+  "meta": { ... },               // tiempos, páginas, motor          (solo códigos 200-212)
+  "validacion_plan": { ... }     // las 8 validaciones del plan      (códigos 200-212, 221 y 225)
 }''', "Sobre de la respuesta")
 st.append(P(f"Las nueve primeras llaves son el contrato homologado con la API de pasaportes de referencia; "
-            f"{m('confianza')} y {m('meta')} son extensiones informativas de este servicio."))
+            f"{m('confianza')}, {m('meta')} y {m('validacion_plan')} son extensiones de este servicio, iguales "
+            "a las de la API de forma migratoria INM."))
 st.append(H2("5.1 Bloque datos"))
 st += tabla(["Campo", "Tipo", "Ejemplo", "Descripción"], [
     ("tipo_documento", "texto", "P", "Tipo del documento según la página de datos (casi siempre P)."),
@@ -410,7 +456,7 @@ st += tabla(["Campo", "Tipo", "Ejemplo", "Descripción"], [
     ("nombre_completo", "texto", "ANA LUCIA TORRES VEGA", "Extensión: nombres seguidos de apellidos."),
     ("pais_emisor_nombre", "texto", "MEXICO", "Extensión: nombre del país emisor."),
     ("nacionalidad_impresa", "texto", "MEXICANA", "Extensión: nacionalidad tal como está impresa."),
-    ("vigente", "booleano", "true", "Extensión: true si el vencimiento es hoy o posterior."),
+    ("vigente", "booleano", "true", "Extensión: misma regla que el plan (año de vencimiento igual o mayor al actual)."),
 ], [4.0, 1.6, 4.2, 7.4], mono_cols=(0, 2))
 st.append(H2("5.2 Bloque sello"))
 st.append(P("El sello «COTEJADO CONTRA ORIGINAL» que el banco pone sobre la copia. Es <b>opcional</b>: si el PDF no lo "
@@ -473,6 +519,46 @@ st += tabla(["Bloque", "Contenido"], [
              "advertencias. Informativo; no tomar decisiones con él."),
 ], [3.0, 14.2], mono_cols=(0,))
 
+st.append(H2("5.6 Bloque validacion_plan (plan de atención)"))
+st.append(P("Responde las 8 validaciones del <b>Plan de atención - Validación documental</b>, sección Pasaporte, "
+            "en el mismo orden. Es independiente de <b>codigo</b>: codigo describe la calidad de la extracción y "
+            "validacion_plan dice si el documento cumple el plan. Es el mismo bloque que entrega la API de forma "
+            "migratoria INM."))
+st += tabla(["Campo", "Tipo", "Descripción"], [
+    ("cumple", "booleano", "true solo si las 8 validaciones pasan al 100 %."),
+    ("mensaje", "texto", "«Documento válido: cumple con todas las validaciones.» o «Revisar documento y motivo de rechazo»."),
+    ("motivos_rechazo", "lista de texto", "Una línea por cada validación que no pasó, con su explicación."),
+    ("regla_vigencia", "texto", "Regla usada para la vigencia: anio (plan de atención) o fecha."),
+    ("validaciones", "lista", "Las 8 validaciones: id, pregunta, resultado, ok y detalle."),
+], [3.6, 2.6, 11.0], mono_cols=(0,))
+st += tabla(["#", "id", "Pregunta del plan", "Pasa cuando", "Regla"], [
+    ("1", "hoja_en_blanco", "¿Es una hoja en blanco?", "NO", "Se leyó texto en el documento."),
+    ("2", "imagen_ilegible", "¿La imagen es ilegible?", "NO", "SÍ si no hay texto, si faltan 2 o más datos esenciales "
+                                                            "(nombre, fecha de nacimiento, número de pasaporte) o si falta uno y la MRZ tampoco cuadra."),
+    ("3", "es_pasaporte", "¿Es un pasaporte?", "SI", "Página de datos de un pasaporte de cualquier país."),
+    ("4", "vigente", "¿Está vigente?", "SI", "Año de vencimiento igual o mayor al año actual. Con MRZ íntegra se usa su fecha, verificada por el dígito de control."),
+    ("5", "nombre_coincide", "¿El nombre coincide?", "SI", "Mismas palabras sin importar orden, acentos ni mayúsculas. Si la "
+                                                          "hoja de datos se leyó distinto, se acepta cuando coincide la MRZ íntegra."),
+    ("6", "curp_coincide", "¿La CURP coincide?", "SI o NO_APLICA", "Igual a la capturada. Se toleran hasta 2 caracteres que el OCR confunde "
+                                                                 "(O/0, I/1, S/5, B/8...) si la CURP capturada cuadra con la fecha y el sexo verificados. "
+                                                                 "Sin CURP en solicitud o pasaporte (extranjeros): NO_APLICA."),
+    ("7", "fecha_nacimiento_coincide", "¿La fecha de nacimiento coincide?", "SI", "Misma fecha. Si la hoja de datos se leyó distinto, se "
+                                                                             "acepta cuando coincide la de la MRZ íntegra."),
+    ("8", "nacionalidad_coincide", "¿La nacionalidad coincide?", "SI", "Mismo país: acepta gentilicio, nombre del país o código ISO."),
+], [0.6, 4.6, 3.4, 2.0, 6.6], mono_cols=(1,))
+st += tabla(["resultado", "Significado", "¿Bloquea?"], [
+    ("SI / NO", "Respuesta a la pregunta del plan.", "Según la columna «Pasa cuando»"),
+    ("NO_APLICA", "La comprobación no corresponde (CURP sin dato).", "No"),
+    ("NO_VERIFICADO", "Faltan datos para responder: no se envió el dato de la solicitud, no se leyó en el pasaporte "
+                      "o el documento no es un pasaporte.", "Sí"),
+], [3.2, 10.0, 4.0], mono_cols=(0,))
+st += caja("La regla de vigencia del plan compara solo el año. Si se prefiere comparar la fecha exacta de vencimiento "
+           "contra hoy, el responsable del servicio la cambia con REGLA_VIGENCIA=fecha. datos.vigente usa siempre la "
+           "misma regla que el plan.", titulo="Vigencia")
+st += caja("La MRZ solo respalda nombre y fecha de nacimiento cuando es <b>íntegra</b> (sus cinco dígitos de control "
+           "cuadran) y el nombre no viene recortado. En ese caso el detalle de la validación lo indica.",
+           titulo="Respaldo de la MRZ")
+
 # ------------------------------------------------------------------ 6
 st.append(H1("6. Códigos de respuesta"))
 st += caja(f"Los códigos <b>200 a 225 viajan con HTTP 200</b>, porque la petición fue correcta aunque el documento no "
@@ -516,6 +602,16 @@ st += caja("Si el servidor está caído o no hay red, no llegará ningún JSON: 
 # ------------------------------------------------------------------ 7
 st.append(H1("7. Integración recomendada"))
 st.append(H2("7.1 Cómo decidir"))
+st.append(P("Si integras el plan de atención, decide primero con <b>validacion_plan.cumple</b>: true significa que el "
+            "documento pasó las 8 validaciones; false, que hay que revisar el documento con los motivos de rechazo. "
+            "Usa <b>codigo</b> para los errores técnicos y para saber qué tan confiable es la extracción."))
+st += code('''def decidir_plan(body: dict) -> str:
+    plan = body.get("validacion_plan")
+    if plan is None:                       # error técnico: no se evaluó el documento
+        return decidir(body)
+    if plan["cumple"]:
+        return "APROBADO"
+    return "REVISAR"                       # mostrar plan["motivos_rechazo"]''', "Decisión con el plan de atención (Python)")
 st += code('''def decidir(body: dict) -> str:
     c = body["codigo"]
     if c == 200:
@@ -567,9 +663,10 @@ st.append(H1("8. Ejemplos de respuesta"))
 st.append(P("Ejemplos generados por el código real de la API con <b>datos ficticios</b> "
             f"({m('scripts/generar_ejemplos.py')})."))
 st.append(H2("8.1 Código 200: procesado"))
-b200 = {k: v for k, v in EJ["200"].items() if k != "meta"}
+b200 = {k: v for k, v in EJ["200"].items() if k not in ("meta", "validacion_plan")}
 b200["meta"] = "{ ... tiempos, páginas, motor ... }"
-st += code(js(b200), "200 PROCESADO (respuesta completa, meta resumido)")
+b200["validacion_plan"] = "{ ... ver 8.6 ... }"
+st += code(js(b200), "200 PROCESADO (meta y validacion_plan resumidos)")
 
 
 def parcial(c):
@@ -590,9 +687,19 @@ st.append(P("El sello trae fecha, pero en REVISÓ solo hay una firma y no viene 
 b212 = EJ["212"]
 st += code(js({k: b212[k] for k in ("codigo", "estado", "mensaje", "sello", "validacion")}), "212 PROCESADO_INCOMPLETO (extracto)")
 st.append(H2("8.5 Código 225 y 221: sin datos"))
-st += code(js(EJ["225"]), "225 NO_ES_PASAPORTE")
-st += code(js(EJ["221"]), "221 HOJA_EN_BLANCO")
-st.append(H2("8.6 Errores"))
+b225 = {k: v for k, v in EJ["225"].items() if k != "validacion_plan"}
+b225["validacion_plan"] = {k: EJ["225"]["validacion_plan"][k] for k in ("cumple", "mensaje", "motivos_rechazo")}
+st += code(js(b225), "225 NO_ES_PASAPORTE (validacion_plan resumido)")
+b221 = {k: v for k, v in EJ["221"].items() if k != "validacion_plan"}
+b221["validacion_plan"] = {k: EJ["221"]["validacion_plan"][k] for k in ("cumple", "mensaje", "motivos_rechazo")}
+st += code(js(b221), "221 HOJA_EN_BLANCO (validacion_plan resumido)")
+st.append(H2("8.6 validacion_plan: cumple"))
+st += code(js(EJ["200"]["validacion_plan"]), "validacion_plan con la solicitud correcta")
+st.append(H2("8.7 validacion_plan: no cumple"))
+st.append(P("Solicitud con nombre incompleto, otra fecha de nacimiento y otra nacionalidad."))
+bp = EJ["plan_rechazo"]
+st += code(js({k: bp[k] for k in ("cumple", "mensaje", "motivos_rechazo")}), "validacion_plan con datos que no coinciden (extracto)")
+st.append(H2("8.8 Errores"))
 st += code("\n\n".join(f"// HTTP {c if int(c) >= 300 else 200}\n" + json.dumps(EJ[c], ensure_ascii=False)
                        for c in ("401", "400", "413", "422", "222")), "Errores (una línea por código)")
 
@@ -654,6 +761,10 @@ faqs = [
     ("Me responde 401.", "Falta el header X-API-Key, tiene otro nombre o la clave es incorrecta. Las mayúsculas del nombre del header no importan; el valor sí."),
     ("Me responde 422.", "El archivo no viaja en el campo file o la petición no es multipart/form-data. La lista errores indica qué faltó."),
     ("¿Cuál uso, /pasaporte o /extract?", "/pasaporte. /extract es un alias para pruebas."),
+    ("No envío datos de la solicitud y cumple sale false.", "Es lo esperado: sin esos datos no se pueden responder las validaciones de coincidencia (NO_VERIFICADO). La extracción en datos sigue siendo válida."),
+    ("¿codigo 200 significa que cumple el plan?", "No necesariamente. codigo habla de la extracción; validacion_plan.cumple dice si coincide con la solicitud y está vigente."),
+    ("Recibo 210 pero cumple sale true.", "Puede pasar: la hoja de datos se leyó distinto de la MRZ (210), pero la MRZ, verificada por sus dígitos de control, coincide con la solicitud. El detalle de la validación lo indica."),
+    ("La CURP salió NO_APLICA.", "La solicitud no trae CURP o el pasaporte es extranjero y no tiene CURP. No bloquea el plan."),
 ]
 for q, a in faqs:
     st.append(KeepTogether([P(f"<b>{q}</b>", "p"), P(a, "nota"), Spacer(1, 4)]))

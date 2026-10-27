@@ -10,26 +10,28 @@ Flujo por archivo:
   3. Qwen3-VL lee la página de datos; la MRZ se valida con sus dígitos de control.
   4. Fusión MRZ + lectura impresa, comprobaciones y, en modo homologado, el sello de cotejo.
   5. Responder en formato homologado (homologado.py) o propio (FORMATO_RESPUESTA).
+  6. En formato homologado, agregar `validacion_plan` (plan.py): las 8 validaciones del plan de
+     atención, sección Pasaporte, contra los datos de la solicitud enviados en el mismo formulario.
 
 Rutas: POST /pasaporte (principal) y POST /extract (alias para pruebas).
 
 Arranque local:
     uvicorn app.main:app --reload --port 8000
 Prueba:
-    curl -H "X-API-Key: <API_KEY del .env>" -F "file=@expediente.pdf" http://localhost:8000/pasaporte
+    curl -H "X-API-Key: <API_KEY del .env>" -F "file=@expediente.pdf" -F "nombre=Ana Lucia Torres Vega"          http://localhost:8000/pasaporte
 """
 import asyncio
 import hmac
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, Security, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Security, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import homologado, pipeline, respuesta
+from . import homologado, pipeline, plan, respuesta
 from .config import get_settings
 from .documents import PDF_MAGIC
 from .ocr import engine
@@ -83,9 +85,9 @@ _TAGS = [
 _s = get_settings()
 app = FastAPI(
     title="OCR Pasaportes - Open Source",
-    version="0.2.0",
-    description="Extracción de la página de datos de pasaportes de cualquier país con PaddleOCR + Qwen3-VL "
-                "y validación MRZ.",
+    version="0.3.0",
+    description="Extracción de la página de datos de pasaportes de cualquier país con PaddleOCR + Qwen3-VL, "
+                "validación MRZ y validaciones del plan de atención.",
     openapi_tags=_TAGS,
     lifespan=lifespan,
     docs_url="/docs" if _s.enable_docs else None,
@@ -168,27 +170,52 @@ async def _read(f: UploadFile) -> bytes | JSONResponse:
 _DOC = {200: {"description": "Desenlace en `codigo`: 200, 210-212 (procesado) o 221-225 (no se extrajo)"},
         **_error_doc(400, 401, 413, 422, 500)}
 _D_FILE = "PDF escaneado con la página de datos del pasaporte (puede traer otros documentos)"
+_D_NOMBRE = "Nombre completo capturado en la solicitud, en cualquier orden. Alternativa: apellido_paterno, apellido_materno y nombres."
+_D_CURP = "CURP capturada en la solicitud (si existe)."
+_D_FECHA = "Fecha de nacimiento capturada: AAAA-MM-DD (también acepta DD/MM/AAAA)."
+_D_NAC = "Nacionalidad capturada: gentilicio (Colombiana), país (Colombia) o código ISO (COL)."
+
+
+def _solicitud(nombre, apellido_paterno, apellido_materno, nombres, curp, fecha_nacimiento, nacionalidad) -> plan.Solicitud:
+    return plan.Solicitud(nombre=nombre, apellido_paterno=apellido_paterno, apellido_materno=apellido_materno,
+                          nombres=nombres, curp=curp, fecha_nacimiento=fecha_nacimiento, nacionalidad=nacionalidad)
 
 
 @app.post("/pasaporte", dependencies=[Depends(check_api_key)], responses=_DOC, tags=["Pasaporte"],
-          summary="Extrae los datos de la página de datos de un pasaporte")
-async def extraer_pasaporte(file: UploadFile = File(..., description=_D_FILE)):
-    return await _atender(file)
+          summary="Extrae los datos de un pasaporte y valida contra la solicitud")
+async def extraer_pasaporte(file: UploadFile = File(..., description=_D_FILE),
+                            nombre: str | None = Form(None, description=_D_NOMBRE),
+                            apellido_paterno: str | None = Form(None), apellido_materno: str | None = Form(None),
+                            nombres: str | None = Form(None), curp: str | None = Form(None, description=_D_CURP),
+                            fecha_nacimiento: str | None = Form(None, description=_D_FECHA),
+                            nacionalidad: str | None = Form(None, description=_D_NAC)):
+    return await _atender(file, _solicitud(nombre, apellido_paterno, apellido_materno, nombres, curp,
+                                           fecha_nacimiento, nacionalidad))
 
 
 @app.post("/extract", dependencies=[Depends(check_api_key)], responses=_DOC, tags=["Pruebas"],
           summary="Pruebas: mismo resultado que /pasaporte")
-async def extract(file: UploadFile = File(..., description=_D_FILE)):
-    return await _atender(file)
+async def extract(file: UploadFile = File(..., description=_D_FILE), nombre: str | None = Form(None),
+                  apellido_paterno: str | None = Form(None), apellido_materno: str | None = Form(None),
+                  nombres: str | None = Form(None), curp: str | None = Form(None),
+                  fecha_nacimiento: str | None = Form(None), nacionalidad: str | None = Form(None)):
+    return await _atender(file, _solicitud(nombre, apellido_paterno, apellido_materno, nombres, curp,
+                                           fecha_nacimiento, nacionalidad))
 
 
-async def _atender(file: UploadFile) -> JSONResponse:
+async def _atender(file: UploadFile, solicitud: plan.Solicitud | None = None) -> JSONResponse:
     data = await _read(file)
     if isinstance(data, JSONResponse):
         return data
     async with app.state.sem:
         result = await pipeline.process([data], app.state.vlm, file.filename)
     body = homologado.construir(result) if _homologado() else respuesta.construir(result)
-    log.info("archivo procesado codigo=%s paginas=%s tiempo_ms=%s", body["codigo"],
+    # Validaciones del plan de atención (sección Pasaporte): siempre que se evaluó el documento
+    categoria = (body.get("clasificacion") or {}).get("categoria") if _homologado() else None
+    if categoria:
+        body["validacion_plan"] = plan.evaluar(categoria, body.get("datos"), body.get("mrz"),
+                                               solicitud or plan.Solicitud(), get_settings().regla_vigencia)
+    log.info("archivo procesado codigo=%s cumple_plan=%s paginas=%s tiempo_ms=%s", body["codigo"],
+             body.get("validacion_plan", {}).get("cumple"),
              result.meta.paginas if result.meta else "?", result.meta.tiempo_total_ms if result.meta else "?")
     return JSONResponse(body, status_code=http_status(body["codigo"]))

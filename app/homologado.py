@@ -155,7 +155,10 @@ def _datos(r: ResultadoPasaporte, s: Settings) -> tuple[dict, list[str]]:
             como = "con la MRZ y el dígito verificador" if c.get("fuente") == "mrz" else "con el OCR"
             avisos.append(f"datos.curp corregida {como}: se leyó '{c.get('leido')}' y quedó '{c.get('quedo')}'")
 
-    vigente = date.fromisoformat(vencimiento) >= date.today() if vencimiento else None
+    vigente = None
+    if vencimiento:  # misma regla que la validación "¿Está vigente?" del plan de atención
+        f = date.fromisoformat(vencimiento)
+        vigente = f >= date.today() if s.regla_vigencia == "fecha" else f.year >= date.today().year
     out = _sin_vacios({
         "tipo_documento": d.tipo_documento,
         "pais_emisor": d.pais_emisor,

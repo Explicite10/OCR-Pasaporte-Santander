@@ -18,6 +18,11 @@ POST http://172.10.30.17:18474/pasaporte
 Header obligatorio: X-API-Key: <clave>   (leerla de una variable de entorno OCR_PASAPORTE_API_KEY;
                                            nunca escribirla en el código)
 Body: multipart/form-data con UN archivo PDF en el campo "file" (content-type application/pdf).
+Campos de texto OPCIONALES en el mismo formulario (datos capturados en la solicitud), para que la
+API responda las validaciones del plan de atención:
+  nombre (completo, cualquier orden)  -- o bien: apellido_paterno, apellido_materno, nombres
+  curp (18 chars, solo si existe) · fecha_nacimiento (AAAA-MM-DD; también acepta DD/MM/AAAA)
+  nacionalidad (gentilicio "Colombiana", país "Colombia" o código ISO "COL")
 Solo se aceptan PDF. Tamaño máximo 25 MB. Máximo 30 páginas por archivo; la página de datos del
 pasaporte debe estar en las primeras 4 y debe incluir las 2 líneas MRZ del pie.
 Timeout del cliente: 120 s. La API tarda de 10 a 25 s por documento y procesa hasta 2 a la vez;
@@ -39,7 +44,18 @@ POST /extract es un alias para pruebas que responde igual. GET /health (sin API 
   "clasificacion": {"categoria": "pasaporte"|"otro"|"hoja_en_blanco",
                     "confianza": null, "caracteres_leidos": int},   // 200-212, 221 y 225
   "confianza": {"<campo>": "alta"|"media"|"baja"},   // solo 200-212 (extensión)
-  "meta": {...}           // solo 200-212 (extensión, informativo)
+  "meta": {...},          // solo 200-212 (extensión, informativo)
+  "validacion_plan": {    // códigos 200-212, 221 y 225: plan de atención, sección Pasaporte
+    "cumple": bool,       // true solo si las 8 validaciones pasan
+    "mensaje": str,       // "Documento válido: ..." o "Revisar documento y motivo de rechazo"
+    "motivos_rechazo": [str],
+    "regla_vigencia": "anio"|"fecha",
+    "validaciones": [{"id": str, "pregunta": str, "resultado": "SI"|"NO"|"NO_APLICA"|"NO_VERIFICADO",
+                      "ok": bool, "detalle": str}]   // 8 elementos, en este orden:
+      // hoja_en_blanco (pasa con NO), imagen_ilegible (pasa con NO), es_pasaporte,
+      // vigente, nombre_coincide, curp_coincide (NO_APLICA no bloquea),
+      // fecha_nacimiento_coincide, nacionalidad_coincide
+  }
 }
 REGLA: si un dato no se pudo leer, la LLAVE NO APARECE (no viene null ni ""). Todos los campos de
 "datos", "sello", "mrz", "confianza" y "meta" deben modelarse como OPCIONALES.
@@ -86,19 +102,26 @@ Viajan con su mismo estado HTTP:
 Cualquier código desconocido -> tratar como REINTENTAR y registrarlo.
 OJO: 220 NO se usa en esta API (es "no es INE" en la API de credenciales).
 
+== DECISIÓN CON EL PLAN DE ATENCIÓN ==
+Si existe "validacion_plan": cumple=true -> APROBADO; cumple=false -> REVISAR y mostrar
+"motivos_rechazo". Si no existe (errores técnicos), decidir con la tabla de códigos de arriba.
+"codigo" habla de la calidad de la extracción; "validacion_plan.cumple" de si el documento
+coincide con la solicitud y está vigente. Son independientes.
+
 == REINTENTOS ==
 Reintentar SOLO 500, 502, 503, errores de conexión y timeouts: máximo 3 intentos con espera
 de 2 s, 4 s y 8 s. Nunca reintentar 4xx ni 210-225.
 
 == REQUISITOS DE IMPLEMENTACIÓN ==
-1. Función principal: extraer(archivo) -> resultado tipado con: codigo, estado, mensaje,
-   accion (enum de las acciones de arriba), datos (opcional), sello (opcional), avisos,
-   discrepancias, sin_verificar y el JSON crudo completo.
+1. Función principal: extraer(archivo, solicitud opcional) -> resultado tipado con: codigo,
+   estado, mensaje, accion (enum de las acciones de arriba), cumple_plan, motivos_rechazo,
+   datos (opcional), sello (opcional), avisos, discrepancias, sin_verificar y el JSON crudo completo.
 2. Leer SIEMPRE el JSON aunque el HTTP sea 4xx/5xx (también trae el sobre).
 3. Si la respuesta no es JSON (caída del servidor, proxy), devolver accion=REINTENTAR.
 4. No registrar en logs nombres, número de pasaporte, CURP ni el contenido de "datos" (datos personales).
 5. API key, URL y timeout configurables por variables de entorno.
-6. Incluir pruebas unitarias con respuestas simuladas para 200, 210, 212, 225, 401 y 500.
+6. Incluir pruebas unitarias con respuestas simuladas para 200, 210, 212, 225, 401 y 500,
+   y para validacion_plan con cumple=true y cumple=false.
 
 == EJEMPLO DE RESPUESTA 200 (datos ficticios, extracto) ==
 {"codigo":200,"estado":"PROCESADO","mensaje":"El documento se procesó y todas las comprobaciones cuadraron.",

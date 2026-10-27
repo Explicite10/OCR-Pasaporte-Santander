@@ -78,3 +78,23 @@ MRZ (9). Son los candidatos a revisión humana, que es justo lo que el código 2
    traen y 4 % sólo traen esa): mismo pipeline con el parser TD1 del proyecto de INE.
 3. **Velocidad**: PaddleOCR en GPU o 200 dpi para bajar los ~9 s de OCR por documento.
 4. Base de datos / historial y endpoint de revisión humana, copiados de `OCR-INE-OpenSource`.
+
+## Plan de atención (validacion_plan), 27-oct-2026
+
+Prueba de punta a punta contra la API desplegada (`scripts/probar_plan.py`): los 42 PDFs de la
+verificación de homologación, cada uno con una solicitud armada con los datos del lote v2.
+
+| | Resultado |
+|---|---|
+| Pasaportes que cumplen el plan con la solicitud correcta | **36 de 38** |
+| No pasaportes (tarjeta INM y otros) rechazados con `es_pasaporte = NO` | 4 de 4 |
+| Solicitudes alteradas rechazadas: otra fecha / otra nacionalidad | 38 de 38 / 38 de 38 |
+| Solicitudes alteradas rechazadas: nombre con una palabra menos | 37 de 38 |
+| ERROR del contrato homologado en las 42 respuestas | 0 |
+
+- Los 2 pasaportes que no cumplen y la solicitud alterada aceptada vienen de los datos de prueba, no del
+  plan: la "solicitud correcta" se tomó de una corrida anterior que en esos documentos traía una MRZ mal
+  leída (fecha 1929 y nacionalidad `OGF`), un apellido con la Ñ transliterada (`NXX`) o un nombre con una
+  palabra repetida.
+- La primera corrida marcó como vencidos 2 pasaportes haitianos: la hoja se leyó con vencimiento 2023 y la
+  MRZ íntegra dice 2028. Desde entonces la vigencia usa la fecha de la MRZ cuando es íntegra.

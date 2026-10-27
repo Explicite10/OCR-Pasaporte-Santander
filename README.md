@@ -8,6 +8,18 @@ Todo corre local y gratis: **PaddleOCR** + **Qwen3-VL 8B** (Ollama). Misma arqui
 `OCR-INE-OpenSource`, cambiando el ancla: aquí manda la **MRZ TD3** (ICAO 9303), que es igual en
 todos los países y trae dígitos verificadores.
 
+## Plan de atención (validación documental)
+
+`POST /pasaporte` acepta, opcionales en el mismo formulario, los datos capturados en la solicitud:
+`nombre` (o `apellido_paterno`, `apellido_materno`, `nombres`), `curp`, `fecha_nacimiento` y
+`nacionalidad`. En formato homologado la respuesta agrega `validacion_plan` con las 8 validaciones de la
+sección Pasaporte del plan (hoja en blanco, ilegible, es pasaporte, vigente, nombre, CURP, fecha de
+nacimiento y nacionalidad), cada una con SI/NO, más `cumple`, `mensaje` y `motivos_rechazo`. Es el mismo
+bloque que las APIs de forma migratoria INM. Lógica en [app/plan.py](app/plan.py); vigencia por año
+(`REGLA_VIGENCIA=anio`) o por fecha (`fecha`). Si la hoja de datos se leyó distinto, el nombre y la fecha
+de nacimiento también se aceptan cuando coinciden con la MRZ íntegra, y la vigencia usa la fecha de
+vencimiento de la MRZ íntegra.
+
 ## Documentación para quien integra
 
 - **Guía de integración (PDF):** [docs/Documentacion_API_OCR_Pasaporte.pdf](docs/Documentacion_API_OCR_Pasaporte.pdf):

@@ -21,7 +21,7 @@ os.environ["ENABLE_DOCS"] = "true"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import homologado, mrz_td3  # noqa: E402
+from app import homologado, mrz_td3, plan  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.merge import Merger  # noqa: E402
@@ -86,6 +86,14 @@ def main() -> None:
     ej["222"] = c.post("/pasaporte", headers=k, files={"file": ("vacio.pdf", b"no es un pdf", "application/pdf")}).json()
     ej["health"] = {"status": "ok", "vlm": True, "modelo_vlm": "qwen3-vl:8b-instruct", "backend_vlm": "ollama",
                     "formato_respuesta": "homologado", "max_concurrent_jobs": 2}
+    # Plan de atención: misma lógica que agrega la API (main._atender) con una solicitud ficticia
+    sol = plan.Solicitud(nombre="Ana Lucia Torres Vega", curp="TOVA920708MDFRGN02", fecha_nacimiento="1992-07-08",
+                         nacionalidad="Mexicana")
+    for k in ("200", "210", "211", "212", "sin_sello", "225", "221"):
+        b = ej[k]
+        ej[k]["validacion_plan"] = plan.evaluar(b["clasificacion"]["categoria"], b.get("datos"), b.get("mrz"), sol)
+    malo = plan.Solicitud(nombre="Ana Torres", fecha_nacimiento="1990-07-08", nacionalidad="Colombiana")
+    ej["plan_rechazo"] = plan.evaluar("pasaporte", ej["200"]["datos"], ej["200"]["mrz"], malo)
     salida.write_text(json.dumps(ej, ensure_ascii=False, indent=2), encoding="utf-8")
     print("ok", salida, {k: v.get("codigo") for k, v in ej.items()})
 
