@@ -1,0 +1,1047 @@
+{
+  "200": {
+    "codigo": 200,
+    "estado": "PROCESADO",
+    "mensaje": "El documento se procesó y todas las comprobaciones cuadraron.",
+    "datos": {
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nacionalidad": "MEX",
+      "fecha_nacimiento": "1992-07-08",
+      "lugar_nacimiento": "CIUDAD DE MEXICO",
+      "sexo": "F",
+      "curp": "TOVA920708MDFRGN02",
+      "fecha_expedicion": "2020-02-14",
+      "fecha_vencimiento": "2030-02-13",
+      "autoridad_expedidora": "SRE",
+      "nombre_completo": "ANA LUCIA TORRES VEGA",
+      "pais_emisor_nombre": "MEXICO",
+      "nacionalidad_impresa": "MEXICANA",
+      "vigente": true
+    },
+    "sello": {
+      "fecha": "2026-01-15",
+      "reviso": "Jorge Luis Medina Ortiz",
+      "clave_revisor": "S318204"
+    },
+    "mrz": {
+      "lineas": [
+        "P<MEXTORRES<VEGA<<ANA<LUCIA<<<<<<<<<<<<<<<<<",
+        "G123456786MEX9207086F3002131TOVA920708MDFR78"
+      ],
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "nacionalidad": "MEX",
+      "numero_personal": "TOVA920708MDFR",
+      "fecha_nacimiento": "1992-07-08",
+      "sexo": "F",
+      "fecha_vencimiento": "2030-02-13",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nombre_abreviado": false,
+      "digitos_control": {
+        "numero_pasaporte": true,
+        "fecha_nacimiento": true,
+        "fecha_vencimiento": true,
+        "numero_personal": true,
+        "compuesto": true
+      },
+      "integra": true,
+      "origen": "texto"
+    },
+    "validacion": {
+      "ok": true,
+      "completo": true,
+      "coincidencias": [
+        "MRZ (dígitos de control)",
+        "numero_pasaporte (MRZ)",
+        "fecha_nacimiento (MRZ)",
+        "sexo (MRZ)",
+        "fecha_vencimiento (MRZ)",
+        "nacionalidad (MRZ)",
+        "apellido_paterno (MRZ)",
+        "apellido_materno (MRZ)",
+        "nombres (MRZ)",
+        "curp vs número personal (MRZ)",
+        "fecha_nacimiento (CURP)",
+        "sexo (CURP)"
+      ],
+      "discrepancias": [],
+      "sin_verificar": []
+    },
+    "avisos": [],
+    "clasificacion": {
+      "categoria": "pasaporte",
+      "confianza": null,
+      "caracteres_leidos": 412
+    },
+    "confianza": {
+      "pais_emisor": "alta",
+      "numero_pasaporte": "alta",
+      "apellidos": "alta",
+      "nombres": "alta",
+      "fecha_nacimiento": "alta",
+      "fecha_vencimiento": "alta",
+      "sexo": "alta",
+      "nacionalidad": "alta",
+      "fecha_expedicion": "alta",
+      "lugar_nacimiento": "media",
+      "autoridad": "media",
+      "curp": "alta"
+    },
+    "meta": {
+      "tiempo_total_ms": 17840,
+      "tiempos_ms": {
+        "render": 160,
+        "ocr_y_recorte": 8900,
+        "vlm_pasaporte": 5600,
+        "vlm_sexo": 1300,
+        "sello": 1880
+      },
+      "modelo_vlm": "qwen3-vl:8b-instruct",
+      "paginas": 2,
+      "pagina_pasaporte": 1,
+      "rotado": false,
+      "recorte": "ancla",
+      "mrz_fuente": "ocr",
+      "otros_documentos": [
+        "tarjeta_td1"
+      ],
+      "caracteres_leidos": 412,
+      "categoria": "pasaporte",
+      "documento_detectado": null,
+      "validaciones_extra": [
+        {
+          "regla": "mrz_numero",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_opcional",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_compuesto",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "numero_pasaporte_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "apellidos_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "nombres_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_nacimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_vencimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "sexo_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_expedicion_antes_de_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_estructura_y_digito",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_sexo",
+          "resultado": "ok",
+          "detalle": null
+        }
+      ],
+      "advertencias": []
+    }
+  },
+  "210": {
+    "codigo": 210,
+    "estado": "PROCESADO_CON_DISCREPANCIAS",
+    "mensaje": "El documento se procesó, pero hay datos que se contradicen entre sí. Revisa 'validacion.discrepancias' antes de dar los datos por buenos.",
+    "datos": {
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345673",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nacionalidad": "MEX",
+      "fecha_nacimiento": "1992-07-08",
+      "lugar_nacimiento": "CIUDAD DE MEXICO",
+      "sexo": "F",
+      "curp": "TOVA920708MDFRGN02",
+      "fecha_expedicion": "2020-02-14",
+      "fecha_vencimiento": "2030-02-13",
+      "autoridad_expedidora": "SRE",
+      "nombre_completo": "ANA LUCIA TORRES VEGA",
+      "pais_emisor_nombre": "MEXICO",
+      "nacionalidad_impresa": "MEXICANA",
+      "vigente": true
+    },
+    "sello": {
+      "fecha": "2026-01-15",
+      "reviso": "Jorge Luis Medina Ortiz",
+      "clave_revisor": "S318204"
+    },
+    "mrz": {
+      "lineas": [
+        "P<MEXTORRES<VEGA<<ANA<LUCIA<<<<<<<<<<<<<<<<<",
+        "G123456786MEX9207086F3002131TOVA920708MDFR78"
+      ],
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "nacionalidad": "MEX",
+      "numero_personal": "TOVA920708MDFR",
+      "fecha_nacimiento": "1992-07-08",
+      "sexo": "F",
+      "fecha_vencimiento": "2030-02-13",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nombre_abreviado": false,
+      "digitos_control": {
+        "numero_pasaporte": true,
+        "fecha_nacimiento": true,
+        "fecha_vencimiento": true,
+        "numero_personal": true,
+        "compuesto": true
+      },
+      "integra": true,
+      "origen": "texto"
+    },
+    "validacion": {
+      "ok": false,
+      "completo": true,
+      "coincidencias": [
+        "MRZ (dígitos de control)",
+        "fecha_nacimiento (MRZ)",
+        "sexo (MRZ)",
+        "fecha_vencimiento (MRZ)",
+        "nacionalidad (MRZ)",
+        "apellido_paterno (MRZ)",
+        "apellido_materno (MRZ)",
+        "nombres (MRZ)",
+        "curp vs número personal (MRZ)",
+        "fecha_nacimiento (CURP)",
+        "sexo (CURP)"
+      ],
+      "discrepancias": [
+        "numero_pasaporte (MRZ): hoja de datos 'G12345673' vs 'G12345678'"
+      ],
+      "sin_verificar": []
+    },
+    "avisos": [],
+    "clasificacion": {
+      "categoria": "pasaporte",
+      "confianza": null,
+      "caracteres_leidos": 412
+    },
+    "confianza": {
+      "pais_emisor": "alta",
+      "numero_pasaporte": "alta",
+      "apellidos": "alta",
+      "nombres": "alta",
+      "fecha_nacimiento": "alta",
+      "fecha_vencimiento": "alta",
+      "sexo": "alta",
+      "nacionalidad": "alta",
+      "fecha_expedicion": "alta",
+      "lugar_nacimiento": "media",
+      "autoridad": "media",
+      "curp": "alta"
+    },
+    "meta": {
+      "tiempo_total_ms": 17840,
+      "tiempos_ms": {
+        "render": 160,
+        "ocr_y_recorte": 8900,
+        "vlm_pasaporte": 5600,
+        "vlm_sexo": 1300,
+        "sello": 1880
+      },
+      "modelo_vlm": "qwen3-vl:8b-instruct",
+      "paginas": 2,
+      "pagina_pasaporte": 1,
+      "rotado": false,
+      "recorte": "ancla",
+      "mrz_fuente": "ocr",
+      "otros_documentos": [
+        "tarjeta_td1"
+      ],
+      "caracteres_leidos": 412,
+      "categoria": "pasaporte",
+      "documento_detectado": null,
+      "validaciones_extra": [
+        {
+          "regla": "mrz_numero",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_opcional",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_compuesto",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "numero_pasaporte_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": "lectura visual G12345673 descartada: la MRZ cuadra"
+        },
+        {
+          "regla": "apellidos_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "nombres_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_nacimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_vencimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "sexo_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_expedicion_antes_de_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_estructura_y_digito",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_sexo",
+          "resultado": "ok",
+          "detalle": null
+        }
+      ],
+      "advertencias": [
+        "El número de pasaporte se tomó de la MRZ (la lectura visual decía G12345673)"
+      ]
+    }
+  },
+  "211": {
+    "codigo": 211,
+    "estado": "PROCESADO_CON_AVISOS",
+    "mensaje": "El documento se procesó y nada se contradijo, pero hay algo que requiere revisión humana. Revisa 'avisos'.",
+    "datos": {
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nacionalidad": "MEX",
+      "fecha_nacimiento": "1992-07-08",
+      "lugar_nacimiento": "CIUDAD DE MEXICO",
+      "sexo": "F",
+      "curp": "TOVA920708MDFRGN02",
+      "fecha_expedicion": "2020-02-14",
+      "fecha_vencimiento": "2030-02-13",
+      "autoridad_expedidora": "SRE",
+      "nombre_completo": "ANA LUCIA TORRES VEGA",
+      "pais_emisor_nombre": "MEXICO",
+      "nacionalidad_impresa": "MEXICANA",
+      "vigente": true
+    },
+    "sello": {
+      "fecha": "2026-01-15",
+      "reviso": "Jorge Luis Medina Ortiz",
+      "clave_revisor": "S318204"
+    },
+    "mrz": {
+      "lineas": [
+        "P<MEXTORRES<VEGA<<ANA<LUCIA<<<<<<<<<<<<<<<<<",
+        "G123456786MEX9207086F3002131TOVA920708MDFR78"
+      ],
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "nacionalidad": "MEX",
+      "numero_personal": "TOVA920708MDFR",
+      "fecha_nacimiento": "1992-07-08",
+      "sexo": "F",
+      "fecha_vencimiento": "2030-02-13",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nombre_abreviado": false,
+      "digitos_control": {
+        "numero_pasaporte": true,
+        "fecha_nacimiento": true,
+        "fecha_vencimiento": true,
+        "numero_personal": true,
+        "compuesto": true
+      },
+      "integra": true,
+      "origen": "texto"
+    },
+    "validacion": {
+      "ok": true,
+      "completo": true,
+      "coincidencias": [
+        "MRZ (dígitos de control)",
+        "numero_pasaporte (MRZ)",
+        "fecha_nacimiento (MRZ)",
+        "sexo (MRZ)",
+        "fecha_vencimiento (MRZ)",
+        "nacionalidad (MRZ)",
+        "apellido_paterno (MRZ)",
+        "apellido_materno (MRZ)",
+        "nombres (MRZ)",
+        "curp vs número personal (MRZ)",
+        "fecha_nacimiento (CURP)",
+        "sexo (CURP)"
+      ],
+      "discrepancias": [],
+      "sin_verificar": []
+    },
+    "avisos": [
+      "datos.curp corregida con la MRZ y el dígito verificador: se leyó 'TOVA920708MDFRGN07' y quedó 'TOVA920708MDFRGN02'"
+    ],
+    "clasificacion": {
+      "categoria": "pasaporte",
+      "confianza": null,
+      "caracteres_leidos": 412
+    },
+    "confianza": {
+      "pais_emisor": "alta",
+      "numero_pasaporte": "alta",
+      "apellidos": "alta",
+      "nombres": "alta",
+      "fecha_nacimiento": "alta",
+      "fecha_vencimiento": "alta",
+      "sexo": "alta",
+      "nacionalidad": "alta",
+      "fecha_expedicion": "alta",
+      "lugar_nacimiento": "media",
+      "autoridad": "media",
+      "curp": "alta"
+    },
+    "meta": {
+      "tiempo_total_ms": 17840,
+      "tiempos_ms": {
+        "render": 160,
+        "ocr_y_recorte": 8900,
+        "vlm_pasaporte": 5600,
+        "vlm_sexo": 1300,
+        "sello": 1880
+      },
+      "modelo_vlm": "qwen3-vl:8b-instruct",
+      "paginas": 2,
+      "pagina_pasaporte": 1,
+      "rotado": false,
+      "recorte": "ancla",
+      "mrz_fuente": "ocr",
+      "otros_documentos": [
+        "tarjeta_td1"
+      ],
+      "caracteres_leidos": 412,
+      "categoria": "pasaporte",
+      "documento_detectado": null,
+      "validaciones_extra": [
+        {
+          "regla": "mrz_numero",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_opcional",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_compuesto",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "numero_pasaporte_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "apellidos_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "nombres_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_nacimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_vencimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "sexo_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_expedicion_antes_de_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_estructura_y_digito",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_sexo",
+          "resultado": "ok",
+          "detalle": null
+        }
+      ],
+      "advertencias": [
+        "CURP corregida con la MRZ y el dígito verificador (TOVA920708MDFRGN07 -> TOVA920708MDFRGN02)"
+      ]
+    }
+  },
+  "212": {
+    "codigo": 212,
+    "estado": "PROCESADO_INCOMPLETO",
+    "mensaje": "El documento se procesó y nada se contradijo, pero quedaron comprobaciones sin poder realizarse. Revisa 'validacion.sin_verificar'.",
+    "datos": {
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nacionalidad": "MEX",
+      "fecha_nacimiento": "1992-07-08",
+      "lugar_nacimiento": "CIUDAD DE MEXICO",
+      "sexo": "F",
+      "curp": "TOVA920708MDFRGN02",
+      "fecha_expedicion": "2020-02-14",
+      "fecha_vencimiento": "2030-02-13",
+      "autoridad_expedidora": "SRE",
+      "nombre_completo": "ANA LUCIA TORRES VEGA",
+      "pais_emisor_nombre": "MEXICO",
+      "nacionalidad_impresa": "MEXICANA",
+      "vigente": true
+    },
+    "sello": {
+      "fecha": "2026-01-15"
+    },
+    "mrz": {
+      "lineas": [
+        "P<MEXTORRES<VEGA<<ANA<LUCIA<<<<<<<<<<<<<<<<<",
+        "G123456786MEX9207086F3002131TOVA920708MDFR78"
+      ],
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "nacionalidad": "MEX",
+      "numero_personal": "TOVA920708MDFR",
+      "fecha_nacimiento": "1992-07-08",
+      "sexo": "F",
+      "fecha_vencimiento": "2030-02-13",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nombre_abreviado": false,
+      "digitos_control": {
+        "numero_pasaporte": true,
+        "fecha_nacimiento": true,
+        "fecha_vencimiento": true,
+        "numero_personal": true,
+        "compuesto": true
+      },
+      "integra": true,
+      "origen": "texto"
+    },
+    "validacion": {
+      "ok": true,
+      "completo": false,
+      "coincidencias": [
+        "MRZ (dígitos de control)",
+        "numero_pasaporte (MRZ)",
+        "fecha_nacimiento (MRZ)",
+        "sexo (MRZ)",
+        "fecha_vencimiento (MRZ)",
+        "nacionalidad (MRZ)",
+        "apellido_paterno (MRZ)",
+        "apellido_materno (MRZ)",
+        "nombres (MRZ)",
+        "curp vs número personal (MRZ)",
+        "fecha_nacimiento (CURP)",
+        "sexo (CURP)"
+      ],
+      "discrepancias": [],
+      "sin_verificar": [
+        "sello.reviso (ausente)",
+        "sello.clave_revisor (ausente)"
+      ]
+    },
+    "avisos": [],
+    "clasificacion": {
+      "categoria": "pasaporte",
+      "confianza": null,
+      "caracteres_leidos": 412
+    },
+    "confianza": {
+      "pais_emisor": "alta",
+      "numero_pasaporte": "alta",
+      "apellidos": "alta",
+      "nombres": "alta",
+      "fecha_nacimiento": "alta",
+      "fecha_vencimiento": "alta",
+      "sexo": "alta",
+      "nacionalidad": "alta",
+      "fecha_expedicion": "alta",
+      "lugar_nacimiento": "media",
+      "autoridad": "media",
+      "curp": "alta"
+    },
+    "meta": {
+      "tiempo_total_ms": 17840,
+      "tiempos_ms": {
+        "render": 160,
+        "ocr_y_recorte": 8900,
+        "vlm_pasaporte": 5600,
+        "vlm_sexo": 1300,
+        "sello": 1880
+      },
+      "modelo_vlm": "qwen3-vl:8b-instruct",
+      "paginas": 2,
+      "pagina_pasaporte": 1,
+      "rotado": false,
+      "recorte": "ancla",
+      "mrz_fuente": "ocr",
+      "otros_documentos": [
+        "tarjeta_td1"
+      ],
+      "caracteres_leidos": 412,
+      "categoria": "pasaporte",
+      "documento_detectado": null,
+      "validaciones_extra": [
+        {
+          "regla": "mrz_numero",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_opcional",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_compuesto",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "numero_pasaporte_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "apellidos_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "nombres_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_nacimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_vencimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "sexo_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_expedicion_antes_de_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_estructura_y_digito",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_sexo",
+          "resultado": "ok",
+          "detalle": null
+        }
+      ],
+      "advertencias": []
+    }
+  },
+  "sin_sello": {
+    "codigo": 200,
+    "estado": "PROCESADO",
+    "mensaje": "El documento se procesó y todas las comprobaciones cuadraron.",
+    "datos": {
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nacionalidad": "MEX",
+      "fecha_nacimiento": "1992-07-08",
+      "lugar_nacimiento": "CIUDAD DE MEXICO",
+      "sexo": "F",
+      "curp": "TOVA920708MDFRGN02",
+      "fecha_expedicion": "2020-02-14",
+      "fecha_vencimiento": "2030-02-13",
+      "autoridad_expedidora": "SRE",
+      "nombre_completo": "ANA LUCIA TORRES VEGA",
+      "pais_emisor_nombre": "MEXICO",
+      "nacionalidad_impresa": "MEXICANA",
+      "vigente": true
+    },
+    "sello": {},
+    "mrz": {
+      "lineas": [
+        "P<MEXTORRES<VEGA<<ANA<LUCIA<<<<<<<<<<<<<<<<<",
+        "G123456786MEX9207086F3002131TOVA920708MDFR78"
+      ],
+      "tipo_documento": "P",
+      "pais_emisor": "MEX",
+      "numero_pasaporte": "G12345678",
+      "nacionalidad": "MEX",
+      "numero_personal": "TOVA920708MDFR",
+      "fecha_nacimiento": "1992-07-08",
+      "sexo": "F",
+      "fecha_vencimiento": "2030-02-13",
+      "apellido_paterno": "TORRES",
+      "apellido_materno": "VEGA",
+      "nombres": "ANA LUCIA",
+      "nombre_abreviado": false,
+      "digitos_control": {
+        "numero_pasaporte": true,
+        "fecha_nacimiento": true,
+        "fecha_vencimiento": true,
+        "numero_personal": true,
+        "compuesto": true
+      },
+      "integra": true,
+      "origen": "texto"
+    },
+    "validacion": {
+      "ok": true,
+      "completo": true,
+      "coincidencias": [
+        "MRZ (dígitos de control)",
+        "numero_pasaporte (MRZ)",
+        "fecha_nacimiento (MRZ)",
+        "sexo (MRZ)",
+        "fecha_vencimiento (MRZ)",
+        "nacionalidad (MRZ)",
+        "apellido_paterno (MRZ)",
+        "apellido_materno (MRZ)",
+        "nombres (MRZ)",
+        "curp vs número personal (MRZ)",
+        "fecha_nacimiento (CURP)",
+        "sexo (CURP)"
+      ],
+      "discrepancias": [],
+      "sin_verificar": []
+    },
+    "avisos": [],
+    "clasificacion": {
+      "categoria": "pasaporte",
+      "confianza": null,
+      "caracteres_leidos": 412
+    },
+    "confianza": {
+      "pais_emisor": "alta",
+      "numero_pasaporte": "alta",
+      "apellidos": "alta",
+      "nombres": "alta",
+      "fecha_nacimiento": "alta",
+      "fecha_vencimiento": "alta",
+      "sexo": "alta",
+      "nacionalidad": "alta",
+      "fecha_expedicion": "alta",
+      "lugar_nacimiento": "media",
+      "autoridad": "media",
+      "curp": "alta"
+    },
+    "meta": {
+      "tiempo_total_ms": 17840,
+      "tiempos_ms": {
+        "render": 160,
+        "ocr_y_recorte": 8900,
+        "vlm_pasaporte": 5600,
+        "vlm_sexo": 1300,
+        "sello": 1880
+      },
+      "modelo_vlm": "qwen3-vl:8b-instruct",
+      "paginas": 2,
+      "pagina_pasaporte": 1,
+      "rotado": false,
+      "recorte": "ancla",
+      "mrz_fuente": "ocr",
+      "otros_documentos": [
+        "tarjeta_td1"
+      ],
+      "caracteres_leidos": 412,
+      "categoria": "pasaporte",
+      "documento_detectado": null,
+      "validaciones_extra": [
+        {
+          "regla": "mrz_numero",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_opcional",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "mrz_compuesto",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "numero_pasaporte_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "apellidos_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "nombres_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_nacimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_vencimiento_mrz_vs_impresa",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "sexo_mrz_vs_impreso",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "fecha_expedicion_antes_de_vencimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_estructura_y_digito",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_fecha_nacimiento",
+          "resultado": "ok",
+          "detalle": null
+        },
+        {
+          "regla": "curp_vs_sexo",
+          "resultado": "ok",
+          "detalle": null
+        }
+      ],
+      "advertencias": []
+    }
+  },
+  "225": {
+    "codigo": 225,
+    "estado": "NO_ES_PASAPORTE",
+    "mensaje": "El documento no es un pasaporte. No se extrajo ningun dato.",
+    "clasificacion": {
+      "categoria": "otro",
+      "confianza": null,
+      "caracteres_leidos": 640
+    }
+  },
+  "221": {
+    "codigo": 221,
+    "estado": "HOJA_EN_BLANCO",
+    "mensaje": "El documento viene en blanco o ilegible: no se leyó ningún texto.",
+    "clasificacion": {
+      "categoria": "hoja_en_blanco",
+      "confianza": null,
+      "caracteres_leidos": 0
+    }
+  },
+  "401": {
+    "codigo": 401,
+    "estado": "NO_AUTORIZADO",
+    "mensaje": "Falta o no coincide el header X-API-Key."
+  },
+  "400": {
+    "codigo": 400,
+    "estado": "ARCHIVO_NO_SOPORTADO",
+    "mensaje": "El tipo de archivo enviado no se acepta."
+  },
+  "413": {
+    "codigo": 413,
+    "estado": "ARCHIVO_DEMASIADO_GRANDE",
+    "mensaje": "El archivo excede el tamaño máximo. Máximo 25 MB."
+  },
+  "422": {
+    "codigo": 422,
+    "estado": "PETICION_INVALIDA",
+    "mensaje": "La petición no es válida. Se espera multipart/form-data con un campo 'file'.",
+    "errores": [
+      "file: Field required"
+    ]
+  },
+  "222": {
+    "codigo": 222,
+    "estado": "ARCHIVO_CORRUPTO",
+    "mensaje": "El archivo no se pudo abrir: está dañado, incompleto, o no es del tipo que dice ser."
+  },
+  "health": {
+    "status": "ok",
+    "vlm": true,
+    "modelo_vlm": "qwen3-vl:8b-instruct",
+    "backend_vlm": "ollama",
+    "formato_respuesta": "homologado",
+    "max_concurrent_jobs": 2
+  }
+}

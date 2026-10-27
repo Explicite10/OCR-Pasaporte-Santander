@@ -1,4 +1,4 @@
-# Passport OCR API
+# OCR Pasaportes - Open Source
 
 API en FastAPI que extrae los datos de la **página de datos de pasaportes de cualquier país**
 (PDF escaneado; fotocopias en blanco y negro con sellos y, a menudo, otros documentos en el mismo
@@ -7,6 +7,24 @@ PDF) y devuelve un JSON estructurado con **confianza por campo** y **validacione
 Todo corre local y gratis: **PaddleOCR** + **Qwen3-VL 8B** (Ollama). Misma arquitectura que
 `OCR-INE-OpenSource`, cambiando el ancla: aquí manda la **MRZ TD3** (ICAO 9303), que es igual en
 todos los países y trae dígitos verificadores.
+
+## Documentación para quien integra
+
+- **Guía de integración (PDF):** [docs/Documentacion_API_OCR_Pasaporte.pdf](docs/Documentacion_API_OCR_Pasaporte.pdf):
+  conexión, petición, estructura de la respuesta, códigos, ejemplos en Python, Node, C# y PHP, seguridad y
+  precisión.
+- **Prompt para generar el cliente con IA:** [docs/PROMPT_IA.md](docs/PROMPT_IA.md).
+- **Swagger:** `http://172.10.30.17:18474/docs`, con los grupos Pasaporte (`POST /pasaporte`), Pruebas
+  (`POST /extract`, alias) y Sistema (`GET /health`).
+
+Para regenerar la guía después de un cambio (los ejemplos salen del código real con datos ficticios):
+
+```bash
+docker run --rm --entrypoint sh passport-ocr-api:latest -c "python -m scripts.generar_ejemplos /tmp/ej.json >/dev/null 2>&1 && cat /tmp/ej.json" > docs/ejemplos_respuesta.json
+python docs/generar_documentacion.py . docs/Documentacion_API_OCR_Pasaporte.pdf
+```
+
+El segundo paso necesita `reportlab`.
 
 ## Cómo funciona
 

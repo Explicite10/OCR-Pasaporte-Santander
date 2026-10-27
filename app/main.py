@@ -1,8 +1,29 @@
+"""
+API FastAPI: recibe un PDF con un expediente y devuelve en JSON los datos de la página de datos del
+pasaporte (cualquier país). La tarjeta de residente del INM, la credencial INE y cualquier otro
+documento del PDF se ignoran.
+
+Flujo por archivo:
+  1. Renderizar las páginas.
+  2. PaddleOCR ubica la MRZ del pasaporte (2 renglones "P<...") probando giros; si no la encuentra,
+     el modelo de visión ubica el pasaporte y se repite el OCR en ese recorte.
+  3. Qwen3-VL lee la página de datos; la MRZ se valida con sus dígitos de control.
+  4. Fusión MRZ + lectura impresa, comprobaciones y, en modo homologado, el sello de cotejo.
+  5. Responder en formato homologado (homologado.py) o propio (FORMATO_RESPUESTA).
+
+Rutas: POST /pasaporte (principal) y POST /extract (alias para pruebas).
+
+Arranque local:
+    uvicorn app.main:app --reload --port 8000
+Prueba:
+    curl -H "X-API-Key: <API_KEY del .env>" -F "file=@expediente.pdf" http://localhost:8000/pasaporte
+"""
 import asyncio
+import hmac
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, HTTPException, Request, Security, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Security, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
@@ -53,19 +74,28 @@ async def lifespan(app: FastAPI):
         await app.state.vlm.aclose()
 
 
+_TAGS = [
+    {"name": "Pasaporte", "description": "Endpoint principal. Usar este en los sistemas que consumen la API."},
+    {"name": "Pruebas", "description": "Endpoint alterno para pruebas. Responde igual que /pasaporte."},
+    {"name": "Sistema", "description": "Estado del servicio."},
+]
+
 _s = get_settings()
 app = FastAPI(
-    title="Passport OCR API",
-    version="0.1.0",
-    description="Extracción estructurada de la página de datos de pasaportes (cualquier país) a partir de PDF.",
+    title="OCR Pasaportes - Open Source",
+    version="0.2.0",
+    description="Extracción de la página de datos de pasaportes de cualquier país con PaddleOCR + Qwen3-VL "
+                "y validación MRZ.",
+    openapi_tags=_TAGS,
     lifespan=lifespan,
     docs_url="/docs" if _s.enable_docs else None,
     redoc_url=None,
     openapi_url="/openapi.json" if _s.enable_docs else None,
 )
 
-_api_key = APIKeyHeader(name="X-API-Key", auto_error=False,
-                        description="El valor de API_KEY del .env del servidor (si no está definida, no se pide)")
+_api_key = APIKeyHeader(name="X-API-Key", auto_error=False, description="Valor de API_KEY del .env del servidor")
+if not _s.api_key:
+    log.warning("API_KEY vacia: el endpoint queda SIN proteccion")
 
 
 def _error_doc(*codigos: int) -> dict:
@@ -73,8 +103,11 @@ def _error_doc(*codigos: int) -> dict:
 
 
 def check_api_key(x_api_key: str | None = Security(_api_key)) -> None:
-    expected = get_settings().api_key
-    if expected and x_api_key != expected:
+    esperada = get_settings().api_key
+    if not esperada:
+        return
+    # compare_digest evita adivinar la clave midiendo tiempos de respuesta
+    if not x_api_key or not hmac.compare_digest(x_api_key.encode(), esperada.encode()):
         raise HTTPException(status_code=401, detail=_mensaje(401))
 
 
@@ -98,12 +131,13 @@ async def _internal_error(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(sobre(500), status_code=500)
 
 
-@app.get("/health")
+@app.get("/health", tags=["Sistema"], summary="Estado del servicio")
 async def health():
     s = get_settings()
     vlm_ok = await app.state.vlm.health() if app.state.vlm else None
     return {"status": "ok" if vlm_ok is not False else "degradado", "vlm": vlm_ok,
-            "modelo_vlm": s.vlm_model, "backend_vlm": s.vlm_backend}
+            "modelo_vlm": s.vlm_model, "backend_vlm": s.vlm_backend,
+            "formato_respuesta": s.formato_respuesta, "max_concurrent_jobs": s.max_concurrent_jobs}
 
 
 _IMAGE_MAGIC = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"II*\x00", b"MM\x00*", b"BM")
@@ -131,18 +165,30 @@ async def _read(f: UploadFile) -> bytes | JSONResponse:
     return data
 
 
-@app.post("/pasaporte", responses=_error_doc(400, 401, 413, 422, 500),
-          summary="Extrae los datos de la página de datos de un pasaporte (PDF)")
-async def extraer_pasaporte(
-    file: UploadFile = File(..., description="PDF escaneado que contiene el pasaporte (puede traer otros documentos)"),
-    _: None = Security(check_api_key),
-):
+_DOC = {200: {"description": "Desenlace en `codigo`: 200, 210-212 (procesado) o 221-225 (no se extrajo)"},
+        **_error_doc(400, 401, 413, 422, 500)}
+_D_FILE = "PDF escaneado con la página de datos del pasaporte (puede traer otros documentos)"
+
+
+@app.post("/pasaporte", dependencies=[Depends(check_api_key)], responses=_DOC, tags=["Pasaporte"],
+          summary="Extrae los datos de la página de datos de un pasaporte")
+async def extraer_pasaporte(file: UploadFile = File(..., description=_D_FILE)):
+    return await _atender(file)
+
+
+@app.post("/extract", dependencies=[Depends(check_api_key)], responses=_DOC, tags=["Pruebas"],
+          summary="Pruebas: mismo resultado que /pasaporte")
+async def extract(file: UploadFile = File(..., description=_D_FILE)):
+    return await _atender(file)
+
+
+async def _atender(file: UploadFile) -> JSONResponse:
     data = await _read(file)
     if isinstance(data, JSONResponse):
         return data
     async with app.state.sem:
         result = await pipeline.process([data], app.state.vlm, file.filename)
     body = homologado.construir(result) if _homologado() else respuesta.construir(result)
-    log.info("%s -> %s (%s) en %s ms", file.filename, body["codigo"], body["estado"],
-             result.meta.tiempo_total_ms if result.meta else "?")
+    log.info("archivo procesado codigo=%s paginas=%s tiempo_ms=%s", body["codigo"],
+             result.meta.paginas if result.meta else "?", result.meta.tiempo_total_ms if result.meta else "?")
     return JSONResponse(body, status_code=http_status(body["codigo"]))
