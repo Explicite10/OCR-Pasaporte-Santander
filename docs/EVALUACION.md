@@ -98,3 +98,52 @@ verificación de homologación, cada uno con una solicitud armada con los datos 
   palabra repetida.
 - La primera corrida marcó como vencidos 2 pasaportes haitianos: la hoja se leyó con vencimiento 2023 y la
   MRZ íntegra dice 2028. Desde entonces la vigencia usa la fecha de la MRZ cuando es íntegra.
+
+## Precisión contra verdad de terreno (27-oct-2026)
+
+Método: 50 PDFs del lote elegidos para cubrir casos difíciles (8 `revisar`, 10 mexicanos con CURP, 6 de
+un apellido, 6 con acentos o Ñ, 5 girados o sin ancla, 15 al azar; 19 países). Un segundo lector (modelo
+de visión independiente del motor) transcribió la página de datos **sin ver la respuesta de la API**;
+`scripts/comparar_verdad.py` comparó campo por campo. Las discrepancias con valores quedaron en
+`lote/verdad/discrepancias.csv` en el servidor (datos personales; no se versiona) para revisión humana.
+
+| Campo | Homologado (`datos` = lectura impresa) | Interno (la MRZ manda) |
+|---|---:|---:|
+| País emisor, nacionalidad, sexo, expedición | 100 % | 100 % |
+| Fecha de nacimiento | 98.0 % | **100 %** |
+| Fecha de vencimiento | 95.9 % | **100 %** |
+| Número de pasaporte | 91.8 % | **98.0 %** |
+| Apellidos / nombres | 98.0 % / 98.0 % | 98.0 % / 100 % |
+| Lugar de nacimiento | 98.0 % (+1 parcial) | 98.0 % (+1 parcial) |
+| CURP (19 mexicanos) | 84.2 % | 84.2 % |
+| Autoridad (40 con dato) | 72.5 % | 72.5 % |
+| **Total, 549 campos** | **95.6 %** | **96.9 %** |
+| Documentos con todos los campos correctos | 30 de 49 (61 %) | 33 de 49 (67 %) |
+| Sin contar autoridad (campo sin definición clara) | 97.4 % | 98.8 % |
+
+Lectura de los resultados:
+
+- **Los campos con dígito verificador salen perfectos cuando la MRZ manda** (número, nacimiento,
+  vencimiento: 100 % salvo un número con MRZ cortada en la copia). Con la regla de la referencia, `datos`
+  lleva lo impreso y hereda los errores de lectura del modelo (4 números, 2 vencimientos, 1 nacimiento,
+  1 par apellidos/nombres invertido); **todos ellos salieron con código 210**, es decir, la API sí los
+  señaló como discrepancia.
+- **Autoridad** es el campo débil y en buena parte por definición: en pasaportes mexicanos el campo trae
+  nombre del funcionario y oficina, y la API devuelve uno u otro; en Bolivia y Costa Rica no hay
+  autoridad impresa, solo lugar de expedición. De las 11 diferencias, 5 son de definición, 3 lecturas
+  parciales y 3 errores reales en copias tenues.
+- **CURP**: 3 fallas de 19, todas marcadas con confianza `baja`: dos CURP tapadas por sello o foto
+  fantasma (ilegibles también para el lector humano) y una `O` por `0` en la homoclave.
+- **Un documento de 50 no se detectó bien**: traía la tarjeta INM en la página 1 y el pasaporte
+  (libanés) girado 90° en la página 2; el localizador tomó la tarjeta y devolvió un pasaporte inventado
+  con código 210. En otro caso parecido (pasaporte cubano en la página 2) sí lo encontró.
+
+Mejoras que salen de esta medición, pendientes:
+
+1. Si el recorte del localizador no produce una MRZ TD3 válida, seguir con la siguiente página en vez de
+   quedarse con ese recorte (caso del pasaporte libanés).
+2. Al tomar nombres de la MRZ, convertir la transliteración ICAO (`NXX` → Ñ) antes de entregarlos.
+3. Reparar la CURP cuando la única diferencia es `O`/`0` en la homoclave (el dígito verificador lo
+   confirma).
+4. Definir con el consumidor qué debe llevar `autoridad_expedidora` en pasaportes mexicanos (oficina o
+   funcionario).
