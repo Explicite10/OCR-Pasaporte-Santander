@@ -92,3 +92,8 @@ def test_linea1_exige_pais_icao():
     assert mrz_td3.looks_like_line1("PCHLBRAVO<VALLADARES<<FRANCISCO<<<<<<<<<<<<")
     assert mrz_td3.line1_country("P<MEXGARCIA<<JUAN<<<<<<<<<<<<<<<<<<<<<<<<<<<") == "MEX"
     assert mrz_td3.line1_country("PI<MEXIZASS9BA<A<<<<<<<<<<<<<<<<<<<<<<<<<<<<") is None
+
+
+def test_nombre_de_mrz_con_enie_transliterada():
+    r = parse(["P<ARGMONXXUZ<<EDUARDO<ALBERTO<<<<<<<<<<<<<<<<", L2])
+    assert r.apellidos == "MONXXUZ"  # el parser entrega la MRZ tal cual; la fusión recupera la Ñ

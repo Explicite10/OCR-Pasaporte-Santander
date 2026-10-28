@@ -88,6 +88,7 @@ def main():
     tot = {m: defaultdict(Counter) for m in ("homologado", "interno")}
     docs_perfectos = Counter()
     no_pasaporte = []
+    por_conf = defaultdict(Counter)  # (confianza) -> ok / no ok, sobre el resultado interno
     for v in verdad:
         id_ = v["id"]
         interno = json.loads((Path(a.lote) / "json" / f"{id_}.json").read_text(encoding="utf-8"))
@@ -114,6 +115,8 @@ def main():
             for modo, val in (("homologado", val_h), ("interno", val_i)):
                 r, nota = igual(campo, v[campo], val)
                 tot[modo][campo][r] += 1
+                if modo == "interno" and campo != "pais":
+                    por_conf[conf.get(INT.get(campo, campo), "sin dato")]["ok" if r == "ok" else "error"] += 1
                 if r != "ok":
                     perfecto[modo] = False
                 if r in ("falla", "parcial", "vacio"):
@@ -147,6 +150,15 @@ def main():
         ev = sum(T.values())
         lines.append(f"| **total** | {ev} | {T['ok']} | {T['parcial']} | {T['falla']} | {T['vacio']} | **{T['ok'] / ev:.1%}** |")
         lines.append(f"\nDocumentos con todos los campos correctos: {docs_perfectos[modo]} de {n} ({docs_perfectos[modo] / n:.0%})\n")
+    lines.append("## Exactitud según la confianza que reportó la API (resultado interno)")
+    lines.append("| confianza | campos | correctos | exactitud |")
+    lines.append("|---|---:|---:|---:|")
+    for c in ("alta", "media", "baja", "sin dato"):
+        k = por_conf.get(c)
+        if k:
+            n_ = sum(k.values())
+            lines.append(f"| {c} | {n_} | {k['ok']} | {k['ok'] / n_:.1%} |")
+    lines.append("")
     if no_pasaporte:
         lines.append("## Recortes que no eran pasaporte (según el capturista)")
         for x in no_pasaporte:

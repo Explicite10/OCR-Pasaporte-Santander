@@ -147,3 +147,24 @@ Mejoras que salen de esta medición, pendientes:
    confirma).
 4. Definir con el consumidor qué debe llevar `autoridad_expedidora` en pasaportes mexicanos (oficina o
    funcionario).
+
+### Después de las 3 mejoras (misma muestra, 27-oct-2026)
+
+| | Homologado | Interno |
+|---|---:|---:|
+| Total, 549 campos | 95.8 % | **97.3 %** |
+| Documentos con todos los campos correctos | 31 de 49 | **35 de 49 (71 %)** |
+| Apellidos / nombres (interno) | | 100 % / 100 % |
+| CURP (19 mexicanos) | 89.5 % | 89.5 % |
+| Campos con confianza `alta` correctos (interno) | | **348 de 348 (100 %)** |
+| Confianza `media` correctos | | 84 de 95 (88 %) |
+| Confianza `baja` correctos | | 4 de 6 |
+
+- La Ñ transliterada (`NXX`) ya se entrega como Ñ; la CURP con O/0 en la homoclave se corrige con el año
+  de nacimiento (queda con confianza alta y aviso).
+- El PDF con la tarjeta INM en la página 1 y el pasaporte libanés girado en la página 2 ya no produce
+  un pasaporte inventado: el localizador pasa a la página 2 y, como la MRZ de ese pasaporte no se logra
+  leer, responde 225. Sigue pendiente leerlo bien (pasaporte árabe girado, copia tenue).
+- Lo que queda: autoridad (definición del campo), 2 CURP tapadas por sello/foto, 1 número con la MRZ
+  cortada en la copia, y en homologado los errores de lectura impresa que el contrato obliga a entregar
+  (todos con código 210).

@@ -85,7 +85,7 @@ _TAGS = [
 _s = get_settings()
 app = FastAPI(
     title="OCR Pasaportes - Open Source",
-    version="0.3.0",
+    version="0.3.1",
     description="Extracción de la página de datos de pasaportes de cualquier país con PaddleOCR + Qwen3-VL, "
                 "validación MRZ y validaciones del plan de atención.",
     openapi_tags=_TAGS,

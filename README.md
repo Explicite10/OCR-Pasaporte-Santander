@@ -8,6 +8,14 @@ Todo corre local y gratis: **PaddleOCR** + **Qwen3-VL 8B** (Ollama). Misma arqui
 `OCR-INE-OpenSource`, cambiando el ancla: aquí manda la **MRZ TD3** (ICAO 9303), que es igual en
 todos los países y trae dígitos verificadores.
 
+## Precisión medida
+
+Sobre 50 pasaportes del lote (19 países, incluidos los casos difíciles) capturados por un lector
+independiente y comparados campo por campo: **97.3 %** de exactitud por campo con la MRZ mandando
+(99.2 % sin el campo autoridad), 95.8 % en el formato homologado; número, fechas, nombres, sexo y
+nacionalidad al 100 %; y **100 % de los campos con confianza `alta` correctos** (348 de 348).
+Detalle y limitaciones en [docs/EVALUACION.md](docs/EVALUACION.md) y en la sección 11 de la guía PDF.
+
 ## Plan de atención (validación documental)
 
 `POST /pasaporte` acepta, opcionales en el mismo formulario, los datos capturados en la solicitud:

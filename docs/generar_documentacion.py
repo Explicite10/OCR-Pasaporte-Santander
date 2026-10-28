@@ -22,8 +22,8 @@ EJ = json.loads((PROYECTO / "docs" / "ejemplos_respuesta.json").read_text(encodi
 PROMPT = (PROYECTO / "docs" / "PROMPT_IA.md").read_text(encoding="utf-8").split("```text", 1)[1].rsplit("```", 1)[0].strip("\n")
 
 URL = "http://172.10.30.17:18474"
-VERSION_API = "0.3.0"
-VERSION_DOC = "1.1"
+VERSION_API = "0.3.1"
+VERSION_DOC = "1.2"
 FECHA_DOC = "27 de octubre de 2026"
 FECHA_CORTA = "27/10/2026"
 W, Hh = letter
@@ -242,7 +242,20 @@ st += tabla(["Paso", "Qué ocurre"], [
     ("8. Respuesta", "Entrega el JSON con un código que indica la calidad de la extracción y el bloque "
                      "validacion_plan con el resultado del plan de atención."),
 ], [3.2, 14])
-st.append(H2("1.2 Documentos soportados"))
+st.append(H2("1.2 Fuentes que se cruzan para cada dato"))
+st.append(P("La precisión viene de que los datos críticos tienen un dígito de control en la MRZ y los demás se cruzan "
+            "entre dos lectores independientes:"))
+st += tabla(["Dato", "Fuentes"], [
+    ("Número de pasaporte", "MRZ (dígito de control) vs lectura visual de la hoja de datos"),
+    ("Fecha de nacimiento, fecha de vencimiento", "MRZ (dígito de control) vs lectura visual"),
+    ("Apellidos, nombres", "MRZ (sin dígito de control, puede venir recortada) vs lectura visual, que conserva acentos y Ñ"),
+    ("Sexo, nacionalidad, país emisor", "MRZ vs lectura visual"),
+    ("CURP (pasaportes mexicanos)", "Lectura visual vs OCR, estructura y dígito verificador, fecha y sexo de la MRZ, "
+                                   "número personal de la MRZ"),
+    ("Lugar de nacimiento, expedición, autoridad", "Solo lectura visual (expedición debe ser anterior al vencimiento)"),
+    ("Sello de cotejo", "OCR ubica el sello; la lectura visual toma fecha, revisó y clave"),
+], [4.6, 12.6])
+st.append(H2("1.3 Documentos soportados"))
 st += LI(["<b>Pasaportes de cualquier país</b> con zona MRZ de 2 líneas (formato ICAO TD3). Probado con más de 40 "
           "países: México, Colombia, Venezuela, Argentina, España, Cuba, Corea, Chile, Perú, Brasil, Estados Unidos...",
           "<b>Pasaportes mexicanos:</b> además se extrae y valida la CURP.",
@@ -726,27 +739,53 @@ st += LI(["<b>API key:</b> trátala como contraseña. Guárdala en variables de 
 
 # ------------------------------------------------------------------ 11
 st.append(H1("11. Precisión y limitaciones"))
-st.append(P("Medido sobre un lote real de 503 expedientes, de los cuales 481 traen pasaporte, de más de 40 países. "
-            "Son indicadores de consistencia entre fuentes independientes; la medición campo por campo contra una "
-            "captura manual está pendiente."))
-st += tabla(["Indicador", "Resultado", "Cómo se midió"], [
-    ("Expedientes resueltos sin revisión", "<b>94.6 %</b>", "Pasaportes en los que todos los campos críticos quedaron confirmados."),
-    ("MRZ íntegra", "<b>92 %</b>", "Todos los dígitos de control de la MRZ cuadran."),
-    ("Número, nacimiento y vencimiento confirmados", "97 a 98 %", "Respaldados por su dígito de control y coincidentes con la hoja."),
-    ("Apellidos y nombres confirmados", "96 a 97 %", "La hoja de datos y la MRZ dicen lo mismo."),
-    ("CURP válida (pasaportes mexicanos)", "87 %", "Estructura, dígito verificador, fecha y sexo coinciden."),
-    ("No pasaporte detectado", "21 de 21", "Expedientes con solo tarjeta INM u otros documentos: código 225."),
-], [5.6, 2.4, 9.2])
-st += LI(["<b>Lectura impresa contra MRZ:</b> datos entrega lo que dice la hoja de datos. Si el modelo la leyó distinto "
-          "de la MRZ, la respuesta es 210 y la discrepancia trae ambos valores; en esos casos casi siempre la MRZ es la "
-          "correcta.",
-          "<b>Apellidos:</b> la división en paterno y materno es la regla homologada (primera palabra y resto). En "
-          "apellidos compuestos (DE LA CRUZ) la división no es natural, aunque la comparación contra la MRZ sí los acepta.",
-          "<b>Sexo M en pasaportes mexicanos:</b> es ambiguo (mujer en español, male en el estándar), por eso no se compara.",
-          "Si un PDF trae dos pasaportes, se entrega el primero y se agrega un aviso.",
+st.append(P("Medido el 27 de octubre de 2026 sobre el lote de Santander (503 PDFs escaneados, 481 con pasaporte): se "
+            "tomaron <b>50 expedientes</b> elegidos para cubrir los casos difíciles (8 que la API había marcado para "
+            "revisión, 10 mexicanos con CURP, 6 de un solo apellido, 6 con acentos o Ñ, 5 girados o sin ancla y 15 al "
+            "azar; 19 países) y se capturó cada campo de la imagen con un modelo de visión independiente del pipeline, "
+            "sin ver la respuesta de la API. Detalle en docs/EVALUACION.md del proyecto."))
+st.append(P("Se midieron las dos salidas del mismo motor: <b>datos</b> del formato homologado (la lectura impresa, "
+            "como pide la API de referencia) y el resultado interno, donde la MRZ manda cuando su dígito de control la "
+            "respalda (MRZ_MANDA=true)."))
+st += tabla(["Indicador", "Homologado", "Interno", "Base"], [
+    ("Precisión por campo, 12 campos", "95.8 %", "<b>97.3 %</b>", "549 campos"),
+    ("Precisión por campo sin autoridad (campo sin definición única)", "97.6 %", "<b>99.2 %</b>", "509 campos"),
+    ("Número, fecha de nacimiento, fecha de vencimiento", "91.8 / 98.0 / 95.9 %", "<b>98.0 / 100 / 100 %</b>", "49 pasaportes"),
+    ("Apellidos / nombres", "98.0 / 98.0 %", "<b>100 / 100 %</b>", "49 pasaportes"),
+    ("País emisor, nacionalidad, sexo, fecha de expedición", "100 %", "100 %", "49 pasaportes"),
+    ("CURP (pasaportes mexicanos)", "89.5 %", "89.5 %", "19 pasaportes"),
+    ("Pasaportes con todos los campos correctos", "31 de 49", "<b>35 de 49 (71 %)</b>", ""),
+    ("Campos con confianza «alta» correctos (interno)", "", "<b>100 %</b>", "348 de 348"),
+    ("Documentos sin pasaporte rechazados (225)", "1 de 1", "1 de 1", "tarjeta INM + pasaporte ilegible"),
+], [6.6, 2.6, 2.8, 5.2])
+st += tabla(["Campo", "Exactitud (interno)", "Errores encontrados"], [
+    ("pais_emisor, nacionalidad, sexo, nombres, apellidos, fecha_nacimiento, fecha_expedicion, fecha_vencimiento", "100 %", "Ninguno en 49"),
+    ("numero_pasaporte", "98.0 %", "1: copia con la MRZ cortada; se entregó un número ilegible con confianza media y código 210"),
+    ("lugar_nacimiento", "98.0 %", "1 parcial: el pasaporte repite el estado («SAN LUIS POTOSÍ, SAN LUIS POTOSÍ») y se entregó una vez"),
+    ("curp", "89.5 %", "2: CURP tapada por el sello o por la foto fantasma, ilegible también para una persona; confianza baja"),
+    ("autoridad_expedidora", "72.5 %", "11: en pasaportes mexicanos el campo trae funcionario y oficina y la API entrega uno u otro (5); "
+                                      "lecturas parciales (3); copias tenues (3)"),
+], [5.4, 2.2, 9.6], mono_cols=(0,))
+st += caja("En la muestra, <b>todos los campos que la API marcó con confianza «alta» eran correctos</b> (348 de 348). "
+           "Los errores de lectura salieron con confianza media o baja y, en el formato homologado, con código "
+           "<b>210</b>: ninguno se entregó como 200. Por eso <b>codigo == 200 sirve para aprobar en automático</b> y la "
+           "confianza por campo sirve para dirigir la revisión humana.", color=VERDE,
+           fondo=colors.HexColor("#EAF4EA"), titulo="Lo que esto significa para la integración")
+st.append(H2("11.1 Limitaciones"))
+st += LI(["<b>Formato homologado:</b> datos entrega la lectura impresa aunque la MRZ, verificada por su dígito de control, "
+          "diga otra cosa (regla de la API de referencia). En la muestra pasó en 8 campos de 549, siempre con código 210 y "
+          "la discrepancia con ambos valores. Con MRZ_MANDA=true esos campos salen correctos.",
+          "<b>autoridad_expedidora</b> no tiene una definición única entre países: en México el pasaporte imprime el "
+          "nombre del funcionario y la oficina; en Bolivia y Costa Rica solo hay lugar de expedición. Conviene acordar "
+          "con el consumidor qué se espera, o no usar el campo para decidir.",
+          "<b>CURP tapada</b> por el sello de cotejo o por la foto fantasma: no se puede leer; sale con confianza baja.",
+          "<b>Pasaportes girados en páginas posteriores</b> con alfabeto no latino y copia tenue pueden no leerse "
+          "(1 caso de 50: respondió 225 en vez de los datos).",
+          "<b>Muestra:</b> 50 expedientes dan intervalos anchos. 0 errores de 49 acota la exactitud real de un campo por "
+          "arriba de ~94 %; 100 % en confianza alta sobre 348 campos acota el error por debajo de ~1 %.",
           "El modelo de visión no es totalmente determinista: el mismo archivo puede variar en campos sin dígito de "
           "control (autoridad, lugar de nacimiento).",
-          "Copias muy tenues, sellos sobre la MRZ o páginas recortadas bajan la precisión; la API lo refleja con 210, 211 o 212."])
+          "Procesa 2 expedientes a la vez; los demás esperan turno (sección 7.3)."])
 
 # ------------------------------------------------------------------ 12
 st.append(H1("12. Preguntas frecuentes"))

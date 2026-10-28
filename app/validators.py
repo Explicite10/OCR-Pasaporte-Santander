@@ -188,6 +188,27 @@ def curp_repair(curp: str | None, fecha: date | None = None, sexo: str | None = 
     return cands.pop() if len(cands) == 1 else None
 
 
+_HOMOCLAVE_A_DIGITO = str.maketrans({"O": "0", "Q": "0", "D": "0", "I": "1", "L": "1", "Z": "2", "S": "5",
+                                      "B": "8", "G": "6", "T": "7", "A": "4"})
+_HOMOCLAVE_A_LETRA = str.maketrans({"0": "O", "1": "I", "2": "Z", "5": "S", "8": "B", "6": "G", "7": "T", "4": "A"})
+
+
+def curp_homoclave(curp: str | None, fecha: date | None) -> str | None:
+    """La posición 17 de la CURP (índice 16) es un dígito para nacidos antes de 2000 y una letra desde
+    2000. Con la fecha de nacimiento verificada se corrige una O/0, I/1, S/5... en esa posición, siempre
+    que la CURP corregida cuadre con su dígito verificador. Devuelve la CURP (corregida o igual)."""
+    if not curp or len(curp) != 18 or fecha is None:
+        return curp
+    c16 = curp[16]
+    if fecha.year < 2000 and c16.isalpha():
+        cand = curp[:16] + c16.translate(_HOMOCLAVE_A_DIGITO) + curp[17:]
+    elif fecha.year >= 2000 and c16.isdigit():
+        cand = curp[:16] + c16.translate(_HOMOCLAVE_A_LETRA) + curp[17:]
+    else:
+        return curp
+    return cand if cand != curp and curp_valid(cand) else curp
+
+
 def curp_birthdate(curp: str) -> date | None:
     if not curp or len(curp) < 10 or not curp[4:10].isdigit():
         return None

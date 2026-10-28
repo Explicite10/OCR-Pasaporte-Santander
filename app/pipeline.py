@@ -118,16 +118,20 @@ async def process(files: list[bytes], vlm: VlmClient | None, filename: str | Non
     if vlm_on and s.vlm_localizador and s.ocr_enabled and not layout.anchored:
         t = time.perf_counter()
         try:
-            cards: list[CardBox] = []
-            for i, page in enumerate(layout.page_images[:2]):
+            # Página por página: si el recorte que ubicó el VLM no trae una MRZ válida (p. ej. tomó la
+            # tarjeta del INM), se sigue con la siguiente página en vez de quedarse con ese recorte.
+            algun_recorte = False
+            for i, page in enumerate(layout.page_images[:s.max_pages]):
                 found, _ = await vlm.locate(page)
-                cards += [CardBox(i, Box(*c["bbox_2d"]), c["rotacion"]) for c in found]
-                if cards:
-                    break
-            if cards:
+                cards = [CardBox(i, Box(*c["bbox_2d"]), c["rotacion"]) for c in found]
+                if not cards:
+                    continue
+                algun_recorte = True
                 layout = await asyncio.to_thread(analyze_boxes, layout, cards, ocr_read)
-            else:
-                layout.warnings.append("El localizador no vio ningún pasaporte en la página")
+                if layout.anchored:
+                    break
+            if not algun_recorte:
+                layout.warnings.append("El localizador no vio ningún pasaporte en las páginas")
         except VlmError as e:
             log.error("Localizador falló: %s", e)
             layout.warnings.append("El localizador falló; se analizó la página completa")

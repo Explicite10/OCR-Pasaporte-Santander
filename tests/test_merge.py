@@ -59,3 +59,23 @@ def test_clean_name():
     assert _clean_name("JULIO CESAR C C C") == "JULIO CESAR"
     assert _clean_name("MARC0") == "MARCO"
     assert _clean_name("HUANG, HAIXIN") == "HUANG HAIXIN"
+
+
+def test_enie_de_la_mrz_se_recupera():
+    l1 = "P<ARGMONXXUZ<<EDUARDO<ALBERTO<<<<<<<<<<<<<<<<"
+    m = Merger(_vlm(pais_emisor="ARG", apellidos="MONUZ", nombres="EDUARDO ALBERTO", mrz_linea1=l1),
+               mrz_td3.parse([l1, L2]))
+    d = m.run()
+    assert d.apellidos in ("MOÑUZ", "MONUZ")
+    assert "NXX" not in (d.apellidos or "")
+
+
+def test_curp_homoclave_corregida_con_fecha():
+    # La MRZ de prueba dice 1974-08-12; la CURP leída trae una O en la homoclave (debería ser 0)
+    c = "RANE740812MDFRKN0"
+    curp = c + v.curp_check_digit(c)
+    leida = curp[:16] + "O" + curp[17:]
+    m = Merger(_vlm(pais_emisor="MEX", curp=leida), mrz_td3.parse([L1, L2]))
+    d = m.run()
+    assert d.curp == curp
+    assert any("homoclave" in w for w in m.warnings)

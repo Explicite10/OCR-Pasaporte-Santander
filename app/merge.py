@@ -132,7 +132,7 @@ class Merger:
         # --- apellidos y nombres (sin dígito verificador: se cruzan MRZ y lectura visual)
         mrz_integra = bool(m and m.integra)
         for campo in ("apellidos", "nombres"):
-            mrz_val = _clean_name(getattr(m, campo)) if m else None
+            mrz_val = _clean_name(_desnxx(getattr(m, campo))) if m else None
             vlm_val = _clean_name(_s(vlm, campo).upper()) or None
             if vlm_val:
                 self.impreso[campo] = vlm_val
@@ -256,6 +256,12 @@ class Merger:
             pass  # el campo opcional de la MRZ mexicana no trae la CURP completa; sólo referencia
         if d.pais_emisor == "MEX" or curp:
             if curp:
+                fn = date.fromisoformat(d.fecha_nacimiento) if d.fecha_nacimiento else None
+                homoclave = v.curp_homoclave(curp, fn)
+                if homoclave and homoclave != curp:
+                    self.warnings.append(f"CURP corregida en la homoclave con el año de nacimiento ({curp} -> {homoclave})")
+                    self.correcciones.append({"campo": "curp", "leido": curp, "quedo": homoclave, "fuente": "mrz"})
+                    curp = homoclave
                 reparada = v.curp_repair(curp, date.fromisoformat(d.fecha_nacimiento) if d.fecha_nacimiento else None,
                                          d.sexo) if not v.curp_valid(curp) else None
                 if reparada and reparada != curp:
@@ -283,6 +289,11 @@ class Merger:
                 if isinstance(campo, str) and campo in self.conf and self.conf[campo] == "media":
                     self.conf[campo] = "baja"
         return d
+
+
+def _desnxx(name: str | None) -> str | None:
+    """La MRZ translitera la Ñ como NXX (ICAO 9303); al entregar el nombre se recupera la Ñ."""
+    return name.replace("NXX", "Ñ") if name else name
 
 
 _NAME_DIGITS = str.maketrans({"0": "O", "1": "I", "5": "S", "8": "B", "2": "Z", "4": "A", "6": "G", "7": "T"})
